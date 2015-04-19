@@ -1,6 +1,7 @@
 import os
 from os.path import join, getsize
 
+from pytag import Audio
 from tkinter import *
 from tkinter import ttk
 
@@ -77,45 +78,40 @@ entbutton.grid(column=3, row=5, sticky=(E, S))
 #Dateimanager
 #############################################################################
 i = 0
-#for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
-for path in os.walk(path):
-    print(path)
-    j = 1
-    #for Schleife zum Auslesen von unter Pfaden und Dateien
-    for j in range(1, 3):
-        #for Schleife zum Auslesen der eigentlichen Items
-        k = 0
-        for k in range(0,len(path[j])):
-            if i==0:
-                manlist.insert("", 'end', path[j][k], text=path[j][k])
-            else:
-                parentpath = os.path.basename(path[0])
-                manlist.insert(parentpath, 'end', path[j][k], text=path[j][k])
-            print("k=",k)
-            k += 1
-        print("j=",j)
-        j += 1
-    print("i=",i)
-    i += 1
+# #for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
+# for path in os.walk(path):
+#     print(path)
+#     j = 1
+#     #for Schleife zum Auslesen von unter Pfaden und Dateien
+#     for j in range(1, 3):
+#         #for Schleife zum Auslesen der eigentlichen Items
+#         k = 0
+#         for k in range(0,len(path[j])):
+#             if i==0:
+#                 manlist.insert("", 'end', path[j][k], text=path[j][k])
+#             else:
+#                 parentpath = os.path.basename(path[0])
+#                 manlist.insert(parentpath, 'end', path[j][k], text=path[j][k])
+#             print("k=",k)
+#             k += 1
+#         print("j=",j)
+#         j += 1
+#     print("i=",i)
+#     i += 1
 
 
 # Hier nochmal die Schleife die ich gefunden hatte:
-
-# Leeres Array der Songs
-songs = []
-
-# Methode um Verzeichnisse zu scannen:
 def scanPath(verz):
     for name in os.listdir(verz):
         pfad = os.path.join(verz, name)
 
         if os.path.isfile(pfad):
-            songs.append(song(pfad))
+            manlist.insert("", 'end', name, text=name)
         else:
             scanPath(pfad)
 
 scanPath(path)
-print(songs[1].tags)
+
 
 
 #############################################################################
