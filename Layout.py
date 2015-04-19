@@ -4,8 +4,9 @@ from os.path import join, getsize
 from tkinter import *
 from tkinter import ttk
 
-path = "F:\\Downloads\MarSve-Player\mp3"
- 
+#path = "F:\\Downloads\MarSve-Player\mp3"
+path = "/Users/Luftikus/Desktop/mp3"
+
 root = Tk()
 root.title("Mp3 Player MarSve")
 
@@ -96,6 +97,27 @@ for path in os.walk(path):
         j += 1
     print("i=",i)
     i += 1
+
+
+# Hier nochmal die Schleife die ich gefunden hatte:
+
+# Leeres Array der Songs
+songs = []
+
+# Methode um Verzeichnisse zu scannen:
+def scanPath(verz):
+    for name in os.listdir(verz):
+        pfad = os.path.join(verz, name)
+
+        if os.path.isfile(pfad):
+            songs.append(song(pfad))
+        else:
+            scanPath(pfad)
+
+scanPath(path)
+print(songs[1].tags)
+
+
 #############################################################################
 #Dateimanager
 #############################################################################
