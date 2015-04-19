@@ -4,7 +4,7 @@ from os.path import join, getsize
 from tkinter import *
 from tkinter import ttk
 
-path = "F:\\Downloads\Py Player\mp3"
+path = "F:\\Downloads\MarSve-Player\mp3"
  
 root = Tk()
 root.title("Mp3 Player MarSve")
