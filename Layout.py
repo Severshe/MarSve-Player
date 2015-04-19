@@ -1,6 +1,6 @@
 import os
 from os.path import join, getsize
-
+import eyed3
 from pytag import Audio
 from tkinter import *
 from tkinter import ttk
@@ -10,6 +10,17 @@ path = "/Users/Luftikus/Desktop/mp3"
 
 root = Tk()
 root.title("Mp3 Player MarSve")
+
+
+
+### Hinzufügen
+def addToList():
+    if manlist.selection() != "":
+        current = manlist.selection()
+        playlist.insert(END, manlist.selection())
+
+
+
 
 #############################################################################
 #Layout Elemente
@@ -65,7 +76,7 @@ manlistscroll = ttk.Scrollbar( playframe, orient=VERTICAL, command=playlist.yvie
 manlistscroll.grid(column=3, row=4, sticky=(N, E, S))
 playlist.configure(yscrollcommand=manlistscroll.set)
 
-hinbutton = ttk.Button(playframe, text='Hinzufuegen')
+hinbutton = ttk.Button(playframe, text='Hinzufuegen', command=addToList)
 hinbutton.grid(column=1, row=5, sticky=(W, S))
 
 entbutton = ttk.Button(playframe, text='Entfernen')
@@ -94,16 +105,7 @@ def scanPath(verz):
                 k += 1
             j += 1
         i += 1
-## Hier nochmal die Schleife die ich gefunden hatte:
-#def scanPath(verz):
-#    for name in os.listdir(verz):
-#        pfad = os.path.join(verz, name)
-#
-#        if os.path.isfile(pfad):
-#            manlist.insert("", 'end', name, text=name)
-#        else:
-#            scanPath(pfad)
-#
+
 scanPath(path)
 
 
@@ -115,3 +117,5 @@ scanPath(path)
 for child in mainframe.winfo_children(): child.grid_configure(padx=2, pady=2)
 
 root.mainloop()
+
+
