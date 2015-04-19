@@ -77,31 +77,30 @@ entbutton.grid(column=3, row=5, sticky=(E, S))
 #############################################################################
 #Dateimanager
 #############################################################################
-i = 0
-#for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
-for path in os.walk(path):
-    print(path)
-    j = 1
-    #for Schleife zum Auslesen von unter Pfaden und Dateien
-    for j in range(1, 3):
-        #for Schleife zum Auslesen der eigentlichen Items
-        k = 0
-        for k in range(0,len(path[j])):
-            if i==0:
-                manlist.insert("", 'end', os.path.join(path[0], path[j][k]), text=path[j][k])
-            else:
-                #parentpath = path[0]
-                manlist.insert(path[0], 'end', os.path.join(path[0], path[j][k]), text=path[j][k])
-                #print(path[0])
-                #print(os.path.join(path[0], path[j][k]))
-            #print("k=",k)
-            k += 1
-        #print("j=",j)
-        j += 1
-    #print("i=",i)
-    i += 1
-
-
+def scanPath(path):
+    i = 0
+    #for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
+    for path in os.walk(path):
+        #print(path)
+        j = 1
+        #for Schleife zum Auslesen von unter Pfaden und Dateien
+        for j in range(1, 3):
+            #for Schleife zum Auslesen der eigentlichen Items
+            k = 0
+            for k in range(0,len(path[j])):
+                if i==0:
+                    manlist.insert("", 'end', os.path.join(path[0], path[j][k]), text=path[j][k])
+                else:
+                    #parentpath = path[0]
+                    manlist.insert(path[0], 'end', os.path.join(path[0], path[j][k]), text=path[j][k])
+                    #print(path[0])
+                    #print(os.path.join(path[0], path[j][k]))
+                #print("k=",k)
+                k += 1
+            #print("j=",j)
+            j += 1
+        #print("i=",i)
+        i += 1
 ## Hier nochmal die Schleife die ich gefunden hatte:
 #def scanPath(verz):
 #    for name in os.listdir(verz):
@@ -112,7 +111,7 @@ for path in os.walk(path):
 #        else:
 #            scanPath(pfad)
 #
-#scanPath(path)
+scanPath(path)
 
 
 
