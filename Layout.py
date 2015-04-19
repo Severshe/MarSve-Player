@@ -15,6 +15,21 @@ root.title("Mp3 Player MarSve")
 def addToList():
     playlist.insert(END, manlist.focus().split("/")[-1])
 
+player = pyglet.media.Player()
+
+#############################################################################
+#Play/Pause
+#############################################################################
+def play_pause():
+    if player.playing:
+        player.pause()
+    else:
+        if player.time >= player.source.duration:
+            player.seek(0)
+        player.play()
+#############################################################################
+#Play/Pause
+#############################################################################
 
 #############################################################################
 #Layout Elemente
@@ -83,13 +98,26 @@ entbutton.grid(column=3, row=5, sticky=(E, S))
 #Click
 #############################################################################
 def onClick(event):
-    verz  = os.path.dirname(manlist.focus())
-
-    #pyglet.resource.path = verz
-    #song = os.path.basename(manlist.focus())
-
+    player.delete()
     music = pyglet.media.load(manlist.focus())
-    music.play()
+    player.queue(music)
+    if player.playing:
+        player.pause()
+    else:
+        if player.time >= player.source.duration:
+            player.seek(0)
+        player.play()
+    
+#def onClick(event):
+    #verz  = manlist.selection()
+    #item = manlist.item(verz)
+    #print(verz)
+    #pyglet.resource.path = [verz]
+    #song = os.path.basename(manlist.focus())
+    #print(pyglet.resource.path)
+    #print(song)
+    #music = pyglet.resource.media(song)
+    #music.play()
 #############################################################################
 #Click
 #############################################################################
@@ -109,10 +137,10 @@ def scanPath(verz):
             for k in range(0,len(path[j])):
                 if i==0:
                     manlist.insert("", 'end', os.path.join(path[0], path[j][k]), text=path[j][k], tags='Play')
-                    manlist.tag_bind('Play', '<Button-1>', onClick)
+                    manlist.tag_bind('Play', '<Double-Button-1>', onClick)
                 else:
                     manlist.insert(path[0], 'end', os.path.join(path[0], path[j][k]), text=path[j][k], tags='Play')
-                    manlist.tag_bind('Play', '<Button-1>', onClick)
+                    manlist.tag_bind('Play', '<Double-Button-1>', onClick)
                 k += 1
             j += 1
         i += 1
