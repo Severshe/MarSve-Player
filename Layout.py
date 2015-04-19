@@ -77,10 +77,10 @@ entbutton.grid(column=3, row=5, sticky=(E, S))
 #############################################################################
 #Dateimanager
 #############################################################################
-def scanPath(path):
+def scanPath(verz):
     i = 0
     #for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
-    for path in os.walk(path):
+    for path in os.walk(verz):
         j = 1
         #for Schleife zum Auslesen von unter Pfaden und Dateien
         for j in range(1, 3):
