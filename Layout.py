@@ -1,6 +1,6 @@
 import os
 from os.path import join, getsize
-import eyed3
+
 from pytag import Audio
 from tkinter import *
 from tkinter import ttk
@@ -10,17 +10,6 @@ path = "/Users/Luftikus/Desktop/mp3"
 
 root = Tk()
 root.title("Mp3 Player MarSve")
-
-
-
-### Hinzufügen
-def addToList():
-    if manlist.selection() != "":
-        current = manlist.selection()
-        playlist.insert(END, manlist.selection())
-
-
-
 
 #############################################################################
 #Layout Elemente
@@ -76,13 +65,28 @@ manlistscroll = ttk.Scrollbar( playframe, orient=VERTICAL, command=playlist.yvie
 manlistscroll.grid(column=3, row=4, sticky=(N, E, S))
 playlist.configure(yscrollcommand=manlistscroll.set)
 
-hinbutton = ttk.Button(playframe, text='Hinzufuegen', command=addToList)
+hinbutton = ttk.Button(playframe, text='Hinzufuegen')
 hinbutton.grid(column=1, row=5, sticky=(W, S))
 
 entbutton = ttk.Button(playframe, text='Entfernen')
 entbutton.grid(column=3, row=5, sticky=(E, S))
 #############################################################################
 #Layout Elemente
+#############################################################################
+
+#############################################################################
+#Click
+#############################################################################
+def onClick(event):
+    verz  = os.path.dirname(manlist.focus())
+    pyglet.resource.path = [verz]
+    song = os.path.basename(manlist.focus())
+    print(pyglet.resource.path)
+    print(song)
+    music = pyglet.resource.media(song)
+    #music.play()
+#############################################################################
+#Click
 #############################################################################
 
 #############################################################################
@@ -99,13 +103,27 @@ def scanPath(verz):
             k = 0
             for k in range(0,len(path[j])):
                 if i==0:
-                    manlist.insert("", 'end', os.path.join(path[0], path[j][k]), text=path[j][k])
+                    manlist.insert("", 'end', os.path.join(path[0], path[j][k]), text=path[j][k], tags='Play')
+                    manlist.tag_bind('Play', '<Button-1>', onClick)
                 else:
-                    manlist.insert(path[0], 'end', os.path.join(path[0], path[j][k]), text=path[j][k])
+                    manlist.insert(path[0], 'end', os.path.join(path[0], path[j][k]), text=path[j][k], tags='Play')
+                    manlist.tag_bind('Play', '<Button-1>', onClick)
                 k += 1
             j += 1
         i += 1
-
+#############################################################################
+#Dateimanager
+#############################################################################
+## Hier nochmal die Schleife die ich gefunden hatte:
+#def scanPath(verz):
+#    for name in os.listdir(verz):
+#        pfad = os.path.join(verz, name)
+#
+#        if os.path.isfile(pfad):
+#            manlist.insert("", 'end', name, text=name)
+#        else:
+#            scanPath(pfad)
+#
 scanPath(path)
 
 
@@ -117,5 +135,3 @@ scanPath(path)
 for child in mainframe.winfo_children(): child.grid_configure(padx=2, pady=2)
 
 root.mainloop()
-
-
