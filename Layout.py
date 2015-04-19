@@ -75,6 +75,21 @@ entbutton.grid(column=3, row=5, sticky=(E, S))
 #############################################################################
 
 #############################################################################
+#Click
+#############################################################################
+def onClick(event):
+    verz  = os.path.dirname(manlist.focus())
+    pyglet.resource.path = [verz]
+    song = os.path.basename(manlist.focus())
+    print(pyglet.resource.path)
+    print(song)
+    music = pyglet.resource.media(song)
+    #music.play()
+#############################################################################
+#Click
+#############################################################################
+
+#############################################################################
 #Dateimanager
 #############################################################################
 def scanPath(verz):
@@ -88,12 +103,17 @@ def scanPath(verz):
             k = 0
             for k in range(0,len(path[j])):
                 if i==0:
-                    manlist.insert("", 'end', os.path.join(path[0], path[j][k]), text=path[j][k])
+                    manlist.insert("", 'end', os.path.join(path[0], path[j][k]), text=path[j][k], tags='Play')
+                    manlist.tag_bind('Play', '<Button-1>', onClick)
                 else:
-                    manlist.insert(path[0], 'end', os.path.join(path[0], path[j][k]), text=path[j][k])
+                    manlist.insert(path[0], 'end', os.path.join(path[0], path[j][k]), text=path[j][k], tags='Play')
+                    manlist.tag_bind('Play', '<Button-1>', onClick)
                 k += 1
             j += 1
         i += 1
+#############################################################################
+#Dateimanager
+#############################################################################
 ## Hier nochmal die Schleife die ich gefunden hatte:
 #def scanPath(verz):
 #    for name in os.listdir(verz):
