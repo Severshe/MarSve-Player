@@ -93,7 +93,7 @@ for path in os.walk(path):
                 #parentpath = path[0]
                 manlist.insert(path[0], 'end', os.path.join(path[0], path[j][k]), text=path[j][k])
                 #print(path[0])
-                print(os.path.join(path[0], path[j][k]))
+                #print(os.path.join(path[0], path[j][k]))
             #print("k=",k)
             k += 1
         #print("j=",j)
