@@ -1,5 +1,3 @@
-# TEST TEST TEST
-
 import os
 from os.path import join, getsize
 
