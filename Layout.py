@@ -69,7 +69,7 @@ songtext.grid(column=1, row=1, columnspan=6, sticky=(N, W, E))
 prevbutton = ttk.Button(playframe, text='Prev')
 prevbutton.grid(column=1, row=2, sticky=(N, W, E, S))
 
-playbutton = ttk.Button(playframe, text='Play')
+playbutton = ttk.Button(playframe, text='Play', command=play_pause)
 playbutton.grid(column=2, row=2, sticky=(N, W, E, S))
 
 nextbutton =ttk.Button(playframe, text='Next')
