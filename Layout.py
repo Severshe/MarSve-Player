@@ -1,6 +1,6 @@
 import os
 from os.path import join, getsize
-
+import pyglet
 from pytag import Audio
 from tkinter import *
 from tkinter import ttk
@@ -10,6 +10,11 @@ path = "/Users/Luftikus/Desktop/mp3"
 
 root = Tk()
 root.title("Mp3 Player MarSve")
+
+
+def addToList():
+    playlist.insert(END, manlist.focus().split("/")[-1])
+
 
 #############################################################################
 #Layout Elemente
@@ -65,7 +70,7 @@ manlistscroll = ttk.Scrollbar( playframe, orient=VERTICAL, command=playlist.yvie
 manlistscroll.grid(column=3, row=4, sticky=(N, E, S))
 playlist.configure(yscrollcommand=manlistscroll.set)
 
-hinbutton = ttk.Button(playframe, text='Hinzufuegen')
+hinbutton = ttk.Button(playframe, text='Hinzufuegen', command=addToList)
 hinbutton.grid(column=1, row=5, sticky=(W, S))
 
 entbutton = ttk.Button(playframe, text='Entfernen')
@@ -79,12 +84,12 @@ entbutton.grid(column=3, row=5, sticky=(E, S))
 #############################################################################
 def onClick(event):
     verz  = os.path.dirname(manlist.focus())
-    pyglet.resource.path = [verz]
-    song = os.path.basename(manlist.focus())
-    print(pyglet.resource.path)
-    print(song)
-    music = pyglet.resource.media(song)
-    #music.play()
+
+    #pyglet.resource.path = verz
+    #song = os.path.basename(manlist.focus())
+
+    music = pyglet.media.load(manlist.focus())
+    music.play()
 #############################################################################
 #Click
 #############################################################################
