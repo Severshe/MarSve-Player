@@ -17,6 +17,12 @@ list_loc =[] #Liste fuer die Eigentlichen Item Daten der Playlist
 def addToList():
     playlist.insert(END, os.path.basename(manlist.focus()))
     list_loc.append(manlist.focus())
+    
+def delFromList():
+    idxs = playlist.curselection()
+    idx = int(idxs[0])
+    playlist.delete(idx)
+    list_loc.pop(idx)
 
 player = pyglet.media.Player()
 
@@ -115,7 +121,7 @@ playlist.configure(yscrollcommand=manlistscroll.set)
 hinbutton = ttk.Button(playframe, text='Hinzufuegen', command=addToList)
 hinbutton.grid(column=1, row=5, sticky=(W, S))
 
-entbutton = ttk.Button(playframe, text='Entfernen')
+entbutton = ttk.Button(playframe, text='Entfernen', command=delFromList)
 entbutton.grid(column=3, row=5, sticky=(E, S))
 #############################################################################
 #Layout Elemente
