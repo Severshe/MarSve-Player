@@ -22,33 +22,49 @@ path = "/Users/Luftikus/Desktop/mp3"
 root = Tk()
 root.title("Mp3 Player MarSve")
 
-list_loc =[] #Liste fuer die Eigentlichen Item Daten der Playlist
-currenttrack_id = 0
-currenttrack_length = StringVar()
-currenttrack_name = StringVar()
+list_loc =[]                        #Liste fuer die Eigentlichen Item Daten der Playlist
+currenttrack_id = 0                 #Welche Track in list_loc spielt gerade
+currenttrack_length = StringVar()   #Wie lang ist diese Track
+currenttrack_name = StringVar()     #Wie ist der Name des Tracks
 
-def addToList():
+def addToList():    #Funktion zum Hinzufuegen von Songs zur Playlist
     playlist.insert(END, os.path.basename(manlist.focus())[:-4])
     list_loc.append(manlist.focus())
     
-def delFromList():
-    idxs = playlist.curselection()
-    idx = int(idxs[0])
-    playlist.delete(idx)
-    list_loc.pop(idx)
+def delFromList():                                      #Funktion zum Loeschen von Songs von der Playlist
+    idxs = playlist.curselection()                      #Welcher Eintrag ist angewaehlt
+    idx = int(idxs[0])                                  #Nummer des Eintrags
+    loc_time = player.time                              #Momentane Abspielzeit wird gespeichert
+    global currenttrack_id
+    if currenttrack_id > idx:                           #Falls der zu loeschende Eintrag vor dem Spielenden ist
+        currenttrack_id = currenttrack_id - 1           #Muss die currenttrack_id verringert werden
+        playlist.delete(idx)
+        list_loc.pop(idx)
+    elif currenttrack_id == idx:
+        print("Do not delete current playing track")
+    else:                                                       
+        player.delete()                                         #Falls der Track nach dem Momentanen ist,
+        for i in range(currenttrack_id, len(list_loc)):         #Muss die Queue neu aufgebaut werden
+            music = pyglet.media.load(list_loc[i])
+            player.queue(music)
+        player.seek(loc_time)                                   #Die Abspielzeit wird wieder auf loc_time
+        player.play()                                           #gestellt und wird destratet
+        bar["maximum"] = player.source.duration
+        playlist.delete(idx)
+        list_loc.pop(idx)
     
-def nexttrack():
+def nexttrack():                            #Funktion fuer den naechsten Track
     global currenttrack_id
     currenttrack_id = currenttrack_id + 1
     player.next()
     bar["maximum"] = player.source.duration
 
-def prevtrack():
+def prevtrack():                                #Funktion fuer den vorherigen Track
     global currenttrack_id
     currenttrack_id = currenttrack_id - 1
     idx = currenttrack_id
     player.delete()
-    for i in range(idx, len(list_loc)):
+    for i in range(idx, len(list_loc)):         #Queue wird neu aufgebaut
         music = pyglet.media.load(list_loc[i])
         player.queue(music)
     bar["maximum"] = player.source.duration
@@ -58,30 +74,30 @@ def prevtrack():
 player = pyglet.media.Player()
 
 #############################################################################
-#Progressbar Update
+#Update
 #############################################################################
-def update_clock():
-    if bar["maximum"] != player.source.duration:
-        global currenttrack_id
+def update_clock():                                     #Funktion fuer regelmaessige Updates 
+    if bar["maximum"] != player.source.duration:        #If Routine, falls der Track sich geaendert hat
+        global currenttrack_id                          #ohne Eingreifen (automatischer next Track)
         currenttrack_id = currenttrack_id + 1
-        bar["maximum"] = player.source.duration
+        bar["maximum"] = player.source.duration         #Das Maximum der Progressbar wird gesetzt
     if player.playing:
-        threading.Timer(0.25, update_clock).start()
+        threading.Timer(0.25, update_clock).start()     #Intervall in dem Updates geschehen
         
-        tracklength = math.ceil(player.source.duration)
+        tracklength = math.ceil(player.source.duration) #Berechnung der Tracklenge in min und sec
         tracksec = math.fmod (tracklength, 60)
         trackmin = (tracklength-tracksec)/60
             
-        playlength = math.ceil(player.time)
+        playlength = math.ceil(player.time)             #Berechnung der Spiellaenge in min und sec
         playsec = math.fmod (playlength, 60)
         playmin = (playlength-playsec)/60
         currenttrack_length.set('%i:%.2i/%i:%.2i' %(playmin, playsec, trackmin, tracksec))
         
-        currenttrack_name.set(playlist.get(currenttrack_id))
+        currenttrack_name.set(playlist.get(currenttrack_id)) #Der Name des aktuellen Tracks wird gesetzt
         
-        bar["value"] = player.time
+        bar["value"] = player.time                      #Der Fortschritt der Progressbar wird gesetzt
 #############################################################################
-#Progressbar Update
+#Update
 #############################################################################
 
 #############################################################################
@@ -107,8 +123,8 @@ def playlist_play(event):
     idx = int(idxs[0])
     global currenttrack_id
     currenttrack_id = idx
-    player.delete()
-    for i in range(idx, len(list_loc)):
+    player.delete()                             #Queue wird geloescht
+    for i in range(idx, len(list_loc)):         #Queue wird gefuellt
         music = pyglet.media.load(list_loc[i])
         player.queue(music)
     bar["maximum"] = player.source.duration
