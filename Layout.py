@@ -16,8 +16,8 @@ import math
 import threading
 
 #path = "K:\Musik"
-#path = "F:\Downloads\MarSve-Player\mp3"
-path = "/Users/Luftikus/Desktop/mp3"
+path = "F:\Downloads\MarSve-Player\mp3"
+#path = "/Users/Luftikus/Desktop/mp3"
  
 root = Tk()
 root.title("Mp3 Player MarSve")
@@ -28,8 +28,9 @@ currenttrack_length = StringVar()   #Wie lang ist diese Track
 currenttrack_name = StringVar()     #Wie ist der Name des Tracks
 
 def addToList():    #Funktion zum Hinzufuegen von Songs zur Playlist
-    playlist.insert(END, os.path.basename(manlist.focus())[:-4])
-    list_loc.append(manlist.focus())
+    if os.path.isfile(manlist.focus()):
+        playlist.insert(END, os.path.basename(manlist.focus())[:-4])
+        list_loc.append(manlist.focus())
     
 def delFromList():                                      #Funktion zum Loeschen von Songs von der Playlist
     idxs = playlist.curselection()                      #Welcher Eintrag ist angewaehlt
@@ -200,13 +201,13 @@ entbutton.grid(column=3, row=5, sticky=(E, S))
 #Direct Play
 #############################################################################
 def direkt_play(event):
-    player.delete()
-    music = pyglet.media.load(manlist.focus())
-    player.queue(music)
-    player.play()
-    source = player.source
-    update_clock()
-    return music
+    if os.path.isfile(manlist.focus()):
+        player.delete()
+        music = pyglet.media.load(manlist.focus())
+        player.queue(music)
+        player.play()
+        source = player.source
+        update_clock()
 #############################################################################
 #Direct Play
 #############################################################################
