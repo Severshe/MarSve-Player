@@ -12,9 +12,11 @@ path = "/Users/Luftikus/Desktop/mp3"
 root = Tk()
 root.title("Mp3 Player MarSve")
 
+list_loc =[] #Liste für die Eigentlichen Item Daten der Playlist
 
 def addToList():
-    playlist.insert(END, manlist.focus().split("/")[-1])
+    playlist.insert(END, os.path.basename(manlist.focus()))
+    list_loc.append(manlist.focus())
 
 player = pyglet.media.Player()
 
@@ -24,10 +26,7 @@ player = pyglet.media.Player()
 def update_clock():
     if player.playing:
         threading.Timer(0.25, update_clock).start()
-        #print(player.time)
         bar["value"] = player.time
-    #if player.playing:
-    #    print(bar["variable"])
 #############################################################################
 #Progressbar Update
 #############################################################################
@@ -45,6 +44,23 @@ def play_pause():
         update_clock()
 #############################################################################
 #Play/Pause
+#############################################################################
+
+#############################################################################
+#Playlist Doubleclick
+#############################################################################
+def playlist_play(event):
+    idxs = playlist.curselection()
+    idx = int(idxs[0])
+    player.delete()
+    music = pyglet.media.load(list_loc[idx])
+    player.queue(music)
+    bar["maximum"] = player.source.duration
+    player.play()
+    update_clock()
+    return music
+#############################################################################
+#Playlist Doubleclick
 #############################################################################
 
 #############################################################################
@@ -69,11 +85,6 @@ playlistbutton.grid(column=2, row=1, columnspan=2, sticky=(N, E))
 
 manlist = ttk.Treeview(manager)
 manlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
-# manlist["columns"]=("Artist","Song")
-# manlist.column("Artist", width=50)
-# manlist.column("Song", width=50)
-# manlist.heading("Artist", text="Artist")
-# manlist.heading("Song", text="Song")
 
 manlistscroll = ttk.Scrollbar( manager, orient=VERTICAL, command=manlist.yview)
 manlistscroll.grid(column=3, row=2, sticky=(N, E, S))
@@ -111,31 +122,18 @@ entbutton.grid(column=3, row=5, sticky=(E, S))
 #############################################################################
 
 #############################################################################
-#Click
+#Direct Play
 #############################################################################
 def onClick(event):
     player.delete()
     music = pyglet.media.load(manlist.focus())
     player.queue(music)
-    #print(player.source.duration)
     bar["maximum"] = player.source.duration
-    #print(player.time)
     player.play()
     update_clock()
     return music
-    
-#def onClick(event):
-    #verz  = manlist.selection()
-    #item = manlist.item(verz)
-    #print(verz)
-    #pyglet.resource.path = [verz]
-    #song = os.path.basename(manlist.focus())
-    #print(pyglet.resource.path)
-    #print(song)
-    #music = pyglet.resource.media(song)
-    #music.play()
 #############################################################################
-#Click
+#Direct Play
 #############################################################################
 
 #############################################################################
@@ -160,9 +158,7 @@ def scanPath(verz):
                 k += 1
             j += 1
         i += 1
-#############################################################################
-#Dateimanager
-#############################################################################
+
 ## Hier nochmal die Schleife die ich gefunden hatte:
 #def scanPath(verz):
 #    for name in os.listdir(verz):
@@ -174,8 +170,6 @@ def scanPath(verz):
 #            scanPath(pfad)
 #
 scanPath(path)
-
-
 
 #############################################################################
 #Dateimanager
