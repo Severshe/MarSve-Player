@@ -16,8 +16,8 @@ import math
 import threading
 
 #path = "K:\Musik"
-path = "F:\Downloads\MarSve-Player\mp3"
-#path = "/Users/Luftikus/Desktop/mp3"
+#path = "F:\Downloads\MarSve-Player\mp3"
+path = "/Users/Luftikus/Desktop/mp3"
  
 root = Tk()
 root.title("Mp3 Player MarSve")
