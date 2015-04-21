@@ -27,6 +27,12 @@ currenttrack_id = 0                 #Welche Track in list_loc spielt gerade
 currenttrack_length = StringVar()   #Wie lang ist diese Track
 currenttrack_name = StringVar()     #Wie ist der Name des Tracks
 playlist_changed = False
+curIndex = 0
+
+def build_queue():  #Funktion zum aufbauen der queue aus list_loc
+    for i in range(currenttrack_id, len(list_loc)):
+        music = pyglet.media.load(list_loc[i])
+        player.queue(music)
 
 def addToList():    #Funktion zum Hinzufuegen von Songs zur Playlist
     if os.path.isfile(manlist.focus()):
@@ -34,7 +40,10 @@ def addToList():    #Funktion zum Hinzufuegen von Songs zur Playlist
         playlist.insert(END, os.path.basename(manlist.focus())[:-4])
         list_loc.append(manlist.focus())
         playlist_changed = True
-        
+        with open('standard_playlist.lst', 'a') as plfile:
+            plfile.write('\n')
+            plfile.write(manlist.focus())
+        plfile.close()
     
 def delFromList():                                      #Funktion zum Loeschen von Songs von der Playlist
     idxs = playlist.curselection()                      #Welcher Eintrag ist angewaehlt
@@ -48,44 +57,56 @@ def delFromList():                                      #Funktion zum Loeschen v
         list_loc.pop(idx)
     elif currenttrack_id == idx:
         print("Do not delete current playing track")
-    else:                                                       
-        #player.delete()                                         #Falls der Track nach dem Momentanen ist,
-        #for i in range(currenttrack_id, len(list_loc)):         #Muss die Queue neu aufgebaut werden
-        #    music = pyglet.media.load(list_loc[i])
-        #    player.queue(music)
-        #player.seek(loc_time)                                   #Die Abspielzeit wird wieder auf loc_time
-        #player.play()                                           #gestellt und wird destratet
-        #bar["maximum"] = player.source.duration
+    else:
         playlist.delete(idx)
         list_loc.pop(idx)
         playlist_changed = True
+        with open('standard_playlist.lst', 'w') as plfile:
+            for i in range (0, len(list_loc)):
+                if i < len(list_loc)-1:
+                    plfile.write(list_loc[i])
+                    plfile.write('\n')
+                else:
+                    plfile.write(list_loc[i])
+        plfile.close()
     
 def nexttrack():                            #Funktion fuer den naechsten Track
     global currenttrack_id
     global playlist_changed
     currenttrack_id = currenttrack_id + 1
     player.next()
+    playlist.selection_clear(0, 'end')
+    playlist.selection_set(currenttrack_id)
     if playlist_changed:
         player.delete()
-        for i in range(currenttrack_id, len(list_loc)):         #Queue wird neu aufgebaut
-            music = pyglet.media.load(list_loc[i])
-            player.queue(music)
-        player.play()
+        build_queue()
         playlist_changed = False
+    player.play()
     bar["maximum"] = player.source.duration
 
 def prevtrack():                                #Funktion fuer den vorherigen Track
     global currenttrack_id
     currenttrack_id = currenttrack_id - 1
     player.delete()
-    for i in range(currenttrack_id, len(list_loc)):         #Queue wird neu aufgebaut
-        music = pyglet.media.load(list_loc[i])
-        player.queue(music)
+    playlist.selection_clear(0, 'end')
+    playlist.selection_set(currenttrack_id)
+    build_queue()
     bar["maximum"] = player.source.duration
     player.play()
     update_clock()
     
+def volup():    #Funktion zur Lautstärkeerhöhung
+    if math.ceil((player.volume + 0.05)*100) <= 105:
+        player.volume = player.volume + 0.05
+    print(player.volume)
+    
+def voldown():  #Funktion zur Lautstärkeverkleinerung
+    if math.floor(player.volume - 0.05) >= 0:
+        player.volume = player.volume - 0.05
+    print(player.volume)
+    
 player = pyglet.media.Player()
+player.volume = 0.5
 
 #############################################################################
 #Update
@@ -98,9 +119,7 @@ def update_clock():                                     #Funktion fuer regelmaes
         currenttrack_id = currenttrack_id + 1
         if playlist_changed:
             player.delete()
-            for i in range(currenttrack_id, len(list_loc)):         #Queue wird neu aufgebaut
-                music = pyglet.media.load(list_loc[i])
-                player.queue(music)
+            build_queue()
             player.play()
             playlist_changed = False
         bar["maximum"] = player.source.duration         #Das Maximum der Progressbar wird gesetzt
@@ -134,6 +153,8 @@ def play_pause():
         if player.time >= player.source.duration:
             player.seek(0)
         player.play()
+        playlist.selection_clear(0, 'end')
+        playlist.selection_set(currenttrack_id)
         update_clock()
 #############################################################################
 #Play/Pause
@@ -148,14 +169,48 @@ def playlist_play(event):
     global currenttrack_id
     currenttrack_id = idx
     player.delete()                             #Queue wird geloescht
-    for i in range(idx, len(list_loc)):         #Queue wird gefuellt
-        music = pyglet.media.load(list_loc[i])
-        player.queue(music)
+    build_queue()
     bar["maximum"] = player.source.duration
     player.play()
     update_clock()
 #############################################################################
 #Playlist Doubleclick
+#############################################################################
+
+#############################################################################
+#Playlist Click Noetig?
+#############################################################################
+def setCurrent(event):
+    global curIndex
+    curIndex = playlist.nearest(event.y)
+#############################################################################
+#Playlist Click Noetig?
+#############################################################################
+
+#############################################################################
+#Playlist Drag
+#############################################################################
+def shiftSelection(event):
+    global curIndex
+    i = playlist.nearest(event.y)
+    if i < curIndex:
+        x = playlist.get(i)
+        x_list = list_loc[i]      
+        playlist.delete(i)
+        list_loc.pop(i)
+        playlist.insert(i+1, x)
+        list_loc.insert(i+1, x_list)
+        curIndex = i
+    elif i > curIndex:
+        x = playlist.get(i)
+        x_list = list_loc[i]
+        playlist.delete(i)
+        list_loc.pop(i)
+        playlist.insert(i-1, x)
+        list_loc.insert(i-1, x_list)
+        curIndex = i
+#############################################################################
+#Playlist Drag
 #############################################################################
 
 #############################################################################
@@ -206,6 +261,25 @@ nextbutton.grid(column=3, row=2, sticky=(N, W, E, S))
 playlist = Listbox(playframe)
 playlist.grid(column=1, row=4, columnspan=3, sticky=(N, W, E, S))
 playlist.bind('<Double-Button-1>', playlist_play)
+playlist.bind('<Button-1>', setCurrent)
+playlist.bind('<B1-Motion>', shiftSelection)
+
+#############################################################################
+#Standard Playlist wird aus standard_playlist.lst geladen
+#############################################################################
+with open('standard_playlist.lst', 'r') as plfile: #standard Playlist wird geladen
+    standard_playlist = plfile.readlines()
+for i in range (0, len(standard_playlist)):     #standard Playlist wird uebertragen
+    if i < len(standard_playlist)-1:
+        playlist.insert(END, os.path.basename(standard_playlist[i])[:-5])
+        list_loc.append(standard_playlist[i][:-1])
+    elif i == len(standard_playlist)-1:
+        playlist.insert(END, os.path.basename(standard_playlist[i])[:-4])
+        list_loc.append(standard_playlist[i])
+plfile.close()
+#############################################################################
+#Standard Playlist wird aus standard_playlist.lst geladen
+#############################################################################
 
 manlistscroll = ttk.Scrollbar( playframe, orient=VERTICAL, command=playlist.yview)
 manlistscroll.grid(column=3, row=4, sticky=(N, E, S))
@@ -216,6 +290,12 @@ hinbutton.grid(column=1, row=5, sticky=(W, S))
 
 entbutton = ttk.Button(playframe, text='Entfernen', command=delFromList)
 entbutton.grid(column=3, row=5, sticky=(E, S))
+
+plusbutton = ttk.Button(playframe, width= 2, text='+', command=volup)
+plusbutton.grid(column=2, row=5, sticky=(E, S))
+
+minusbutton = ttk.Button(playframe, width= 2, text='-', command=voldown)
+minusbutton.grid(column=2, row=5, sticky=(W, S))
 #############################################################################
 #Layout Elemente
 #############################################################################
