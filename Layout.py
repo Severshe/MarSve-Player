@@ -63,7 +63,6 @@ def update_clock():
         global currenttrack_id
         currenttrack_id = currenttrack_id + 1
         bar["maximum"] = player.source.duration
-        print('New ID',currenttrack_id)
     if player.playing:
         threading.Timer(0.25, update_clock).start()
         bar["value"] = player.time
