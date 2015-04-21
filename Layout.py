@@ -16,17 +16,19 @@ import math
 import threading
 
 #path = "K:\Musik"
-path = "F:\Downloads\MarSve-Player\mp3"
-#path = "/Users/Luftikus/Desktop/mp3"
+#path = "F:\Downloads\MarSve-Player\mp3"
+path = "/Users/Luftikus/Desktop/mp3"
  
 root = Tk()
 root.title("Mp3 Player MarSve")
 
 list_loc =[] #Liste fuer die Eigentlichen Item Daten der Playlist
 currenttrack_id = 0
+currenttrack_length = StringVar()
+currenttrack_name = StringVar()
 
 def addToList():
-    playlist.insert(END, os.path.basename(manlist.focus()))
+    playlist.insert(END, os.path.basename(manlist.focus())[:-4])
     list_loc.append(manlist.focus())
     
 def delFromList():
@@ -65,6 +67,18 @@ def update_clock():
         bar["maximum"] = player.source.duration
     if player.playing:
         threading.Timer(0.25, update_clock).start()
+        
+        tracklength = math.ceil(player.source.duration)
+        tracksec = math.fmod (tracklength, 60)
+        trackmin = (tracklength-tracksec)/60
+            
+        playlength = math.ceil(player.time)
+        playsec = math.fmod (playlength, 60)
+        playmin = (playlength-playsec)/60
+        currenttrack_length.set('%i:%.2i/%i:%.2i' %(playmin, playsec, trackmin, tracksec))
+        
+        currenttrack_name.set(playlist.get(currenttrack_id))
+        
         bar["value"] = player.time
 #############################################################################
 #Progressbar Update
@@ -131,8 +145,11 @@ manlistscroll = ttk.Scrollbar( manager, orient=VERTICAL, command=manlist.yview)
 manlistscroll.grid(column=3, row=2, sticky=(N, E, S))
 manlist.configure(yscrollcommand=manlistscroll.set)
 
-songtext = ttk.Label(playframe, text="Artist - Song")
-songtext.grid(column=1, row=1, columnspan=6, sticky=(N, W, E))
+songtext = ttk.Label(playframe, textvariable=currenttrack_name)
+songtext.grid(column=1, row=1, columnspan=4, sticky=(N, W))
+
+songlength = ttk.Label(playframe, textvariable=currenttrack_length)
+songlength.grid(column=3, row=1, sticky=(N, E))
 
 prevbutton = ttk.Button(playframe, text='Prev', command=prevtrack)
 prevbutton.grid(column=1, row=2, sticky=(N, W, E, S))
