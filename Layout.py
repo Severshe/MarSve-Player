@@ -4,6 +4,7 @@ import pyglet
 from pytag import Audio
 from tkinter import *
 from tkinter import ttk
+import threading
 
 #path = "F:\\Downloads\MarSve-Player\mp3"
 path = "/Users/Luftikus/Desktop/mp3"
@@ -18,6 +19,20 @@ def addToList():
 player = pyglet.media.Player()
 
 #############################################################################
+#Progressbar Update
+#############################################################################
+def update_clock():
+    if player.playing:
+        threading.Timer(0.25, update_clock).start()
+        #print(player.time)
+        bar["value"] = player.time
+    #if player.playing:
+    #    print(bar["variable"])
+#############################################################################
+#Progressbar Update
+#############################################################################
+
+#############################################################################
 #Play/Pause
 #############################################################################
 def play_pause():
@@ -27,6 +42,7 @@ def play_pause():
         if player.time >= player.source.duration:
             player.seek(0)
         player.play()
+        update_clock()
 #############################################################################
 #Play/Pause
 #############################################################################
@@ -101,12 +117,12 @@ def onClick(event):
     player.delete()
     music = pyglet.media.load(manlist.focus())
     player.queue(music)
-    if player.playing:
-        player.pause()
-    else:
-        if player.time >= player.source.duration:
-            player.seek(0)
-        player.play()
+    #print(player.source.duration)
+    bar["maximum"] = player.source.duration
+    #print(player.time)
+    player.play()
+    update_clock()
+    return music
     
 #def onClick(event):
     #verz  = manlist.selection()
