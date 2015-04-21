@@ -12,7 +12,7 @@ path = "/Users/Luftikus/Desktop/mp3"
 root = Tk()
 root.title("Mp3 Player MarSve")
 
-list_loc =[] #Liste für die Eigentlichen Item Daten der Playlist
+list_loc =[] #Liste fuer die Eigentlichen Item Daten der Playlist
 
 def addToList():
     playlist.insert(END, os.path.basename(manlist.focus()))
