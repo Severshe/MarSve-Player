@@ -15,9 +15,11 @@ import math
 
 import threading
 
+#Verzeichnis der zu scannenden Musik und Name der Standardplaylist im Layout.py Ordner
 #path = "K:\Musik"
-#path = "F:\Downloads\MarSve-Player\mp3"
-path = "/Users/Luftikus/Desktop/mp3"
+path = "F:\Downloads\MarSve-Player\mp3"
+#path = "/Users/Luftikus/Desktop/mp3"
+st_pl = "standard_playlist.lst"
 
 root = Tk()
 root.title("Mp3 Player MarSve")
@@ -95,12 +97,12 @@ def prevtrack():                                #Funktion fuer den vorherigen Tr
     player.play()
     update_clock()
     
-def volup():    #Funktion zur Lautstärkeerhöhung
+def volup():    #Funktion zur Lautstaerkeerhoehung
     if math.ceil((player.volume + 0.05)*100) <= 105:
         player.volume = player.volume + 0.05
     print(player.volume)
     
-def voldown():  #Funktion zur Lautstärkeverkleinerung
+def voldown():  #Funktion zur Lautstaerkeverkleinerung
     if math.floor(player.volume - 0.05) >= 0:
         player.volume = player.volume - 0.05
     print(player.volume)
@@ -267,7 +269,7 @@ playlist.bind('<B1-Motion>', shiftSelection)
 #############################################################################
 #Standard Playlist wird aus standard_playlist.lst geladen
 #############################################################################
-with open('standard_playlist.lst', 'r') as plfile: #standard Playlist wird geladen
+with open(st_pl, 'r') as plfile: #standard Playlist wird geladen
     standard_playlist = plfile.readlines()
 for i in range (0, len(standard_playlist)):     #standard Playlist wird uebertragen
     if i < len(standard_playlist)-1:
