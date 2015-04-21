@@ -32,6 +32,7 @@ player = pyglet.media.Player()
 def update_clock():
     if player.playing:
         threading.Timer(0.25, update_clock).start()
+        bar["maximum"] = player.source.duration
         bar["value"] = player.time
 #############################################################################
 #Progressbar Update
@@ -59,9 +60,9 @@ def playlist_play(event):
     idxs = playlist.curselection()
     idx = int(idxs[0])
     player.delete()
-    music = pyglet.media.load(list_loc[idx])
-    player.queue(music)
-    bar["maximum"] = player.source.duration
+    for i in range(idx, len(list_loc)):
+        music = pyglet.media.load(list_loc[i])
+        player.queue(music)
     player.play()
     update_clock()
     return music
@@ -134,7 +135,6 @@ def onClick(event):
     player.delete()
     music = pyglet.media.load(manlist.focus())
     player.queue(music)
-    bar["maximum"] = player.source.duration
     player.play()
     update_clock()
     return music
