@@ -48,12 +48,28 @@ def build_queue():  #Funktion zum aufbauen der queue aus list_loc
         player.queue(music)
 
 def addToList():    #Funktion zum Hinzufuegen von Songs zur Playlist
+    global playlist_changed
     if os.path.isfile(manlist.focus()):
-        global playlist_changed
         playlist.insert(END, os.path.basename(manlist.focus())[:-4])
         list_loc.append(manlist.focus())
         playlist_changed = True
         write_akt_pl()
+    elif os.path.isdir(manlist.focus()):
+        #for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
+        for path in os.walk(manlist.focus()):
+            j = 1
+            #for Schleife zum Auslesen von unter Pfaden und Dateien
+            for j in range(1, 3):
+                #for Schleife zum Auslesen der eigentlichen Items
+                k = 0
+                for k in range(0,len(path[j])):
+                    if os.path.isfile(os.path.join(path[0], path[j][k])):
+                        playlist.insert(END, path[j][k][:-4])
+                        list_loc.append(os.path.join(path[0], path[j][k]))
+                k += 1
+            j += 1
+    playlist_changed = True
+    write_akt_pl()
     
 def delFromList():                                      #Funktion zum Loeschen von Songs von der Playlist
     idxs = playlist.curselection()                      #Welcher Eintrag ist angewaehlt
@@ -73,6 +89,10 @@ def delFromList():                                      #Funktion zum Loeschen v
         list_loc.pop(idx)
         playlist_changed = True
         write_akt_pl()
+    if idx == len(list_loc):
+        playlist.selection_set(idx-1)
+    else:
+        playlist.selection_set(idx)
     
 def nexttrack():                            #Funktion fuer den naechsten Track
     global currenttrack_id
