@@ -5,7 +5,6 @@ from tkinter import *
 from tkinter import ttk
 
 import pyglet
-from pyglet.window import key   #Keyboard und Maus Unterstuetzung
 
 #from pytag import Audio
 
@@ -246,6 +245,7 @@ def shiftSelection(event):
         playlist.insert(i-1, x)
         list_loc.insert(i-1, x_list)
         curIndex = i
+    write_akt_pl()
 #############################################################################
 #Playlist Drag
 #############################################################################
