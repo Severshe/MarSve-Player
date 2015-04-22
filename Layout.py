@@ -27,6 +27,8 @@ list_loc =[]                        #Liste fuer die Eigentlichen Item Daten der 
 currenttrack_id = 0                 #Welche Track in list_loc spielt gerade
 currenttrack_length = StringVar()   #Wie lang ist diese Track
 currenttrack_name = StringVar()     #Wie ist der Name des Tracks
+currentplaylist = StringVar() 
+currentplaylist.set(os.path.basename(akt_pl)[:-4])
 playlist_changed = False
 curIndex = 0
 
@@ -100,20 +102,22 @@ def prevtrack():                                #Funktion fuer den vorherigen Tr
 def volup():    #Funktion zur Lautstaerkeerhoehung
     if math.ceil((player.volume + 0.05)*100) <= 105:
         player.volume = player.volume + 0.05
-    print(player.volume)
     
 def voldown():  #Funktion zur Lautstaerkeverkleinerung
     if math.floor(player.volume - 0.05) >= 0:
         player.volume = player.volume - 0.05
-    print(player.volume)
     
 def switchToPlaylist():
+    playlistbutton.grid_forget()
+    datmanbutton.grid(column=1, row=1, sticky=(N, W))
     manlist.grid_forget()
     manlistscroll.grid_forget()
     pl_ls_list.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
     pl_ls_listscroll.grid(column=3, row=2, sticky=(N, E, S))
     
 def switchToDatMan():
+    datmanbutton.grid_forget()
+    playlistbutton.grid(column=1, row=1, sticky=(N, W))
     pl_ls_list.grid_forget()
     pl_ls_listscroll.grid_forget()
     manlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
@@ -250,6 +254,7 @@ def playlist_load(event):
     list_loc.clear()
     if os.path.isfile(pl_ls_list.focus()):
         akt_pl = pl_ls_list.focus()
+        currentplaylist.set(os.path.basename(akt_pl)[:-4])
         with open(pl_ls_list.focus(), 'r') as plfile: #standard Playlist wird geladen
             standard_playlist = plfile.readlines()
         for i in range (0, len(standard_playlist)):     #standard Playlist wird uebertragen
@@ -279,10 +284,12 @@ playframe = ttk.Frame(mainframe, padding="3 3 3 3")
 playframe.grid(column=2, row=1, sticky=(N, E, S))
 
 datmanbutton =ttk.Button(manager, text='Dateimanager', command=switchToDatMan)
-datmanbutton.grid(column=1, row=1, sticky=(N, W))
 
 playlistbutton =ttk.Button(manager, text='Playlists', command=switchToPlaylist)
-playlistbutton.grid(column=2, row=1, columnspan=2, sticky=(N, E))
+playlistbutton.grid(column=1, row=1, sticky=(N, W))
+
+akt_pl_txt = ttk.Label(manager, textvariable=currentplaylist)
+akt_pl_txt.grid(column=3, row=1, sticky=(N, E))
 
 manlist = ttk.Treeview(manager)
 manlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
