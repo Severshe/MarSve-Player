@@ -1,5 +1,3 @@
-# TEST TEST TEST
-
 import os
 from os.path import join, getsize
 
@@ -19,7 +17,8 @@ import threading
 #path = "K:\Musik"
 path = "F:\Downloads\MarSve-Player\mp3"
 #path = "/Users/Luftikus/Desktop/mp3"
-st_pl = "standard_playlist.lst"
+akt_pl = "standard_playlist.lst"
+path_pl = "F:\Downloads\MarSve-Player\playlists"
 
 root = Tk()
 root.title("Mp3 Player MarSve")
@@ -30,6 +29,16 @@ currenttrack_length = StringVar()   #Wie lang ist diese Track
 currenttrack_name = StringVar()     #Wie ist der Name des Tracks
 playlist_changed = False
 curIndex = 0
+
+def write_akt_pl():
+    with open(akt_pl, 'w') as plfile:
+        for i in range (0, len(list_loc)):
+            if i < len(list_loc)-1:
+                plfile.write(list_loc[i])
+                plfile.write('\n')
+            else:
+                plfile.write(list_loc[i])
+    plfile.close()
 
 def build_queue():  #Funktion zum aufbauen der queue aus list_loc
     for i in range(currenttrack_id, len(list_loc)):
@@ -42,10 +51,7 @@ def addToList():    #Funktion zum Hinzufuegen von Songs zur Playlist
         playlist.insert(END, os.path.basename(manlist.focus())[:-4])
         list_loc.append(manlist.focus())
         playlist_changed = True
-        with open('standard_playlist.lst', 'a') as plfile:
-            plfile.write('\n')
-            plfile.write(manlist.focus())
-        plfile.close()
+        write_akt_pl()
     
 def delFromList():                                      #Funktion zum Loeschen von Songs von der Playlist
     idxs = playlist.curselection()                      #Welcher Eintrag ist angewaehlt
@@ -57,20 +63,14 @@ def delFromList():                                      #Funktion zum Loeschen v
         currenttrack_id = currenttrack_id - 1           #Muss die currenttrack_id verringert werden
         playlist.delete(idx)
         list_loc.pop(idx)
+        write_akt_pl()
     elif currenttrack_id == idx:
         print("Do not delete current playing track")
     else:
         playlist.delete(idx)
         list_loc.pop(idx)
         playlist_changed = True
-        with open('standard_playlist.lst', 'w') as plfile:
-            for i in range (0, len(list_loc)):
-                if i < len(list_loc)-1:
-                    plfile.write(list_loc[i])
-                    plfile.write('\n')
-                else:
-                    plfile.write(list_loc[i])
-        plfile.close()
+        write_akt_pl()
     
 def nexttrack():                            #Funktion fuer den naechsten Track
     global currenttrack_id
@@ -107,6 +107,18 @@ def voldown():  #Funktion zur Lautstaerkeverkleinerung
         player.volume = player.volume - 0.05
     print(player.volume)
     
+def switchToPlaylist():
+    manlist.grid_forget()
+    manlistscroll.grid_forget()
+    pl_ls_list.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
+    pl_ls_listscroll.grid(column=3, row=2, sticky=(N, E, S))
+    
+def switchToDatMan():
+    pl_ls_list.grid_forget()
+    pl_ls_listscroll.grid_forget()
+    manlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
+    manlistscroll.grid(column=3, row=2, sticky=(N, E, S))
+    
 player = pyglet.media.Player()
 player.volume = 0.5
 
@@ -117,7 +129,6 @@ def update_clock():                                     #Funktion fuer regelmaes
     if bar["maximum"] != player.source.duration:        #If Routine, falls der Track sich geaendert hat
         global currenttrack_id                          #ohne Eingreifen (automatischer next Track)
         global playlist_changed
-        #playlist_changed = true
         currenttrack_id = currenttrack_id + 1
         if playlist_changed:
             player.delete()
@@ -216,6 +227,44 @@ def shiftSelection(event):
 #############################################################################
 
 #############################################################################
+#Direct Play
+#############################################################################
+def direkt_play(event):
+    if os.path.isfile(manlist.focus()):
+        player.delete()
+        music = pyglet.media.load(manlist.focus())
+        player.queue(music)
+        player.play()
+        source = player.source
+        update_clock()
+#############################################################################
+#Direct Play
+#############################################################################
+
+#############################################################################
+#Playlistload
+#############################################################################
+def playlist_load(event):
+    global akt_pl
+    playlist.delete(0, 'end')
+    list_loc.clear()
+    if os.path.isfile(pl_ls_list.focus()):
+        akt_pl = pl_ls_list.focus()
+        with open(pl_ls_list.focus(), 'r') as plfile: #standard Playlist wird geladen
+            standard_playlist = plfile.readlines()
+        for i in range (0, len(standard_playlist)):     #standard Playlist wird uebertragen
+            if i < len(standard_playlist)-1:
+                playlist.insert(END, os.path.basename(standard_playlist[i])[:-5])
+                list_loc.append(standard_playlist[i][:-1])
+            elif i == len(standard_playlist)-1:
+                playlist.insert(END, os.path.basename(standard_playlist[i])[:-4])
+                list_loc.append(standard_playlist[i])
+            plfile.close()
+#############################################################################
+#Playlistload
+#############################################################################
+
+#############################################################################
 #Layout Elemente
 #############################################################################
 mainframe = ttk.Frame(root, padding="3 3 3 3")
@@ -229,18 +278,25 @@ manager.grid(column=1, row=1, sticky=(N, W, S))
 playframe = ttk.Frame(mainframe, padding="3 3 3 3")
 playframe.grid(column=2, row=1, sticky=(N, E, S))
 
-datmanbutton =ttk.Button(manager, text='Dateimanager')
+datmanbutton =ttk.Button(manager, text='Dateimanager', command=switchToDatMan)
 datmanbutton.grid(column=1, row=1, sticky=(N, W))
 
-playlistbutton =ttk.Button(manager, text='Playlists')
+playlistbutton =ttk.Button(manager, text='Playlists', command=switchToPlaylist)
 playlistbutton.grid(column=2, row=1, columnspan=2, sticky=(N, E))
 
 manlist = ttk.Treeview(manager)
 manlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
+manlist.tag_bind('Play', '<Double-Button-1>', direkt_play)
 
 manlistscroll = ttk.Scrollbar( manager, orient=VERTICAL, command=manlist.yview)
 manlistscroll.grid(column=3, row=2, sticky=(N, E, S))
 manlist.configure(yscrollcommand=manlistscroll.set)
+
+pl_ls_list = ttk.Treeview(manager)
+pl_ls_list.tag_bind('Play', '<Double-Button-1>', playlist_load)
+
+pl_ls_listscroll = ttk.Scrollbar( manager, orient=VERTICAL, command=pl_ls_list.yview)
+pl_ls_list.configure(yscrollcommand=pl_ls_listscroll.set)
 
 songtext = ttk.Label(playframe, textvariable=currenttrack_name)
 songtext.grid(column=1, row=1, columnspan=4, sticky=(N, W))
@@ -269,7 +325,7 @@ playlist.bind('<B1-Motion>', shiftSelection)
 #############################################################################
 #Standard Playlist wird aus standard_playlist.lst geladen
 #############################################################################
-with open(st_pl, 'r') as plfile: #standard Playlist wird geladen
+with open(akt_pl, 'r') as plfile: #standard Playlist wird geladen
     standard_playlist = plfile.readlines()
 for i in range (0, len(standard_playlist)):     #standard Playlist wird uebertragen
     if i < len(standard_playlist)-1:
@@ -283,9 +339,9 @@ plfile.close()
 #Standard Playlist wird aus standard_playlist.lst geladen
 #############################################################################
 
-manlistscroll = ttk.Scrollbar( playframe, orient=VERTICAL, command=playlist.yview)
-manlistscroll.grid(column=3, row=4, sticky=(N, E, S))
-playlist.configure(yscrollcommand=manlistscroll.set)
+playlistscroll = ttk.Scrollbar( playframe, orient=VERTICAL, command=playlist.yview)
+playlistscroll.grid(column=3, row=4, sticky=(N, E, S))
+playlist.configure(yscrollcommand=playlistscroll.set)
 
 hinbutton = ttk.Button(playframe, text='Hinzufuegen', command=addToList)
 hinbutton.grid(column=1, row=5, sticky=(W, S))
@@ -303,24 +359,9 @@ minusbutton.grid(column=2, row=5, sticky=(W, S))
 #############################################################################
 
 #############################################################################
-#Direct Play
-#############################################################################
-def direkt_play(event):
-    if os.path.isfile(manlist.focus()):
-        player.delete()
-        music = pyglet.media.load(manlist.focus())
-        player.queue(music)
-        player.play()
-        source = player.source
-        update_clock()
-#############################################################################
-#Direct Play
-#############################################################################
-
-#############################################################################
 #Dateimanager
 #############################################################################
-def scanPath(verz):
+def scanPath(verz, list):
     i = 0
     #for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
     for path in os.walk(verz):
@@ -331,11 +372,15 @@ def scanPath(verz):
             k = 0
             for k in range(0,len(path[j])):
                 if i==0:
-                    manlist.insert("", 'end', os.path.join(path[0], path[j][k]), text=path[j][k], tags='Play')
-                    manlist.tag_bind('Play', '<Double-Button-1>', direkt_play)
+                    if os.path.isfile(os.path.join(path[0], path[j][k])):
+                        list.insert("", 'end', os.path.join(path[0], path[j][k]), text=path[j][k][:-4], tags='Play')
+                    else:
+                        list.insert("", 'end', os.path.join(path[0], path[j][k]), text=path[j][k], tags='Play')
                 else:
-                    manlist.insert(path[0], 'end', os.path.join(path[0], path[j][k]), text=path[j][k], tags='Play')
-                    manlist.tag_bind('Play', '<Double-Button-1>', direkt_play)
+                    if os.path.isfile(os.path.join(path[0], path[j][k])):
+                        list.insert(path[0], 'end', os.path.join(path[0], path[j][k]), text=path[j][k][:-4], tags='Play')
+                    else:
+                        list.insert(path[0], 'end', os.path.join(path[0], path[j][k]), text=path[j][k], tags='Play')
                 k += 1
             j += 1
         i += 1
@@ -343,7 +388,8 @@ def scanPath(verz):
 #Dateimanager
 #############################################################################
 
-scanPath(path)
+scanPath(path, manlist)
+scanPath(path_pl, pl_ls_list)
 
 for child in mainframe.winfo_children(): child.grid_configure(padx=2, pady=2)
 root.mainloop()
