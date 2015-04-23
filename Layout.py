@@ -1,5 +1,4 @@
 import os
-from os.path import join, getsize
 
 from tkinter import *
 from tkinter import ttk
@@ -22,6 +21,7 @@ path_pl = "F:\Downloads\MarSve-Player\playlists"
 root = Tk()
 root.title("Mp3 Player MarSve")
 
+#Definitionen
 list_loc =[]                        #Liste fuer die Eigentlichen Item Daten der Playlist
 currenttrack_id = 0                 #Welche Track in list_loc spielt gerade
 currenttrack_length = StringVar()   #Wie lang ist diese Track
@@ -30,6 +30,9 @@ currentplaylist = StringVar()
 currentplaylist.set(os.path.basename(akt_pl)[:-4])
 playlist_changed = False
 curIndex = 0
+search_string = StringVar()
+search_loc =[]
+manager_mode = 0
 
 def write_akt_pl():
     with open(akt_pl, 'w') as plfile:
@@ -47,26 +50,31 @@ def build_queue():  #Funktion zum aufbauen der queue aus list_loc
         player.queue(music)
 
 def addToList():    #Funktion zum Hinzufuegen von Songs zur Playlist
+    global manager_mode
     global playlist_changed
-    if os.path.isfile(manlist.focus()):
-        playlist.insert(END, os.path.basename(manlist.focus())[:-4])
-        list_loc.append(manlist.focus())
-        playlist_changed = True
-        write_akt_pl()
-    elif os.path.isdir(manlist.focus()):
-        #for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
-        for path in os.walk(manlist.focus()):
-            j = 1
-            #for Schleife zum Auslesen von unter Pfaden und Dateien
-            for j in range(1, 3):
-                #for Schleife zum Auslesen der eigentlichen Items
-                k = 0
-                for k in range(0,len(path[j])):
-                    if os.path.isfile(os.path.join(path[0], path[j][k])):
-                        playlist.insert(END, path[j][k][:-4])
-                        list_loc.append(os.path.join(path[0], path[j][k]))
-                k += 1
-            j += 1
+    if manager_mode == 0:
+        if os.path.isfile(manlist.focus()):
+            playlist.insert(END, os.path.basename(manlist.focus())[:-4])
+            list_loc.append(manlist.focus())
+        elif os.path.isdir(manlist.focus()):
+            #for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
+            for path in os.walk(manlist.focus()):
+                j = 1
+                #for Schleife zum Auslesen von unter Pfaden und Dateien
+                for j in range(1, 3):
+                    #for Schleife zum Auslesen der eigentlichen Items
+                    k = 0
+                    for k in range(0,len(path[j])):
+                        if os.path.isfile(os.path.join(path[0], path[j][k])):
+                            playlist.insert(END, path[j][k][:-4])
+                            list_loc.append(os.path.join(path[0], path[j][k]))
+                    k += 1
+                j += 1
+    elif manager_mode == 2:
+        idxs = searchlist.curselection()
+        idx = int(idxs[0])
+        playlist.insert(END, os.path.basename(search_loc[idx])[:-4])
+        list_loc.append(search_loc[idx])
     playlist_changed = True
     write_akt_pl()
     
@@ -106,6 +114,7 @@ def nexttrack():                            #Funktion fuer den naechsten Track
         playlist_changed = False
     player.play()
     bar["maximum"] = player.source.duration
+    currenttrack_name.set(playlist.get(currenttrack_id)) #Der Name des aktuellen Tracks wird gesetzt
 
 def prevtrack():                                #Funktion fuer den vorherigen Track
     global currenttrack_id
@@ -117,6 +126,7 @@ def prevtrack():                                #Funktion fuer den vorherigen Tr
     bar["maximum"] = player.source.duration
     player.play()
     update_clock()
+    currenttrack_name.set(playlist.get(currenttrack_id)) #Der Name des aktuellen Tracks wird gesetzt
     
 def volup():    #Funktion zur Lautstaerkeerhoehung
     if math.ceil((player.volume + 0.05)*100) <= 105:
@@ -125,22 +135,59 @@ def volup():    #Funktion zur Lautstaerkeerhoehung
 def voldown():  #Funktion zur Lautstaerkeverkleinerung
     if math.floor(player.volume - 0.05) >= 0:
         player.volume = player.volume - 0.05
-    
-def switchToPlaylist():
-    playlistbutton.grid_forget()
+        
+def switchTosearchlist():               #Von Playlists_lists 1 zu Searchlist 2
+    global manager_mode
+    manager_mode = 2
+    searchlistbutton.grid_forget()
     datmanbutton.grid(column=1, row=1, sticky=(N, W))
+    pl_ls_list.grid_forget()
+    pl_ls_listscroll.grid_forget()
+    searchlist.grid(column=1, row=3, columnspan=3, sticky=(N, W, E, S))
+    searchlistscroll.grid(column=3, row=3, sticky=(N, E, S))
+    searchbox.grid(column=1, row=2, sticky=(N, W))
+    searchbutton.grid(column=3, row=2, sticky=(N, E))
+    searchbox.focus_set()
+    
+def switchToPlaylist():                 #Von Dateimanager 0 zu Playlists_lists 1
+    global manager_mode
+    manager_mode = 1
+    playlistbutton.grid_forget()
+    searchlistbutton.grid(column=1, row=1, sticky=(N, W))
     manlist.grid_forget()
     manlistscroll.grid_forget()
     pl_ls_list.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
     pl_ls_listscroll.grid(column=3, row=2, sticky=(N, E, S))
     
-def switchToDatMan():
+def switchToDatMan():                   #Von Searchlist 2 zu Dateimanager 0
+    global manager_mode
+    manager_mode = 0
     datmanbutton.grid_forget()
+    searchlist.grid_forget()
+    searchlistscroll.grid_forget()
+    searchbox.grid_forget()
+    searchbutton.grid_forget()
     playlistbutton.grid(column=1, row=1, sticky=(N, W))
-    pl_ls_list.grid_forget()
-    pl_ls_listscroll.grid_forget()
     manlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
     manlistscroll.grid(column=3, row=2, sticky=(N, E, S))
+    
+def start_search(event, verz):
+    search_loc.clear()
+    searchlist.delete(0, 'end')
+    #for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
+    for path in os.walk(verz):
+        j = 1
+        #for Schleife zum Auslesen von unter Pfaden und Dateien
+        for j in range(1, 3):
+            #for Schleife zum Auslesen der eigentlichen Items
+            k = 0
+            for k in range(0,len(path[j])):
+                if os.path.isfile(os.path.join(path[0], path[j][k])):
+                    if str.casefold(search_string.get()) in str.casefold(path[j][k]):
+                        search_loc.append(os.path.join(path[0], path[j][k]))
+                        searchlist.insert(END, path[j][k])
+                k += 1
+            j += 1
     
 player = pyglet.media.Player()
 player.volume = 0.5
@@ -159,6 +206,7 @@ def update_clock():                                     #Funktion fuer regelmaes
             player.play()
             playlist_changed = False
         bar["maximum"] = player.source.duration         #Das Maximum der Progressbar wird gesetzt
+        currenttrack_name.set(playlist.get(currenttrack_id)) #Der Name des aktuellen Tracks wird gesetzt
             
     if player.playing:
         threading.Timer(0.25, update_clock).start()     #Intervall in dem Updates geschehen
@@ -172,7 +220,6 @@ def update_clock():                                     #Funktion fuer regelmaes
         playmin = (playlength-playsec)/60
         currenttrack_length.set('%i:%.2i/%i:%.2i' %(playmin, playsec, trackmin, tracksec))
         
-        currenttrack_name.set(playlist.get(currenttrack_id)) #Der Name des aktuellen Tracks wird gesetzt
         
         bar["value"] = player.time                      #Der Fortschritt der Progressbar wird gesetzt
 #############################################################################
@@ -197,6 +244,23 @@ def play_pause():
 #############################################################################
 
 #############################################################################
+#Searchlist Doubleclick
+#############################################################################
+def searchlist_play(event):
+    idxs = searchlist.curselection()
+    idx = int(idxs[0])
+    player.delete()                             #Queue wird geloescht
+    music = pyglet.media.load(search_loc[idx])
+    player.queue(music)
+    bar["maximum"] = player.source.duration
+    player.play()
+    update_clock()
+    currenttrack_name.set(searchlist.get(idx)[:-4]) #Der Name des aktuellen Tracks wird gesetzt
+#############################################################################
+#Searchlist Doubleclick
+#############################################################################
+
+#############################################################################
 #Playlist Doubleclick
 #############################################################################
 def playlist_play(event):
@@ -209,6 +273,7 @@ def playlist_play(event):
     bar["maximum"] = player.source.duration
     player.play()
     update_clock()
+    currenttrack_name.set(playlist.get(currenttrack_id)) #Der Name des aktuellen Tracks wird gesetzt
 #############################################################################
 #Playlist Doubleclick
 #############################################################################
@@ -261,6 +326,7 @@ def direkt_play(event):
         player.play()
         source = player.source
         update_clock()
+        currenttrack_name.set(os.path.basename(manlist.focus())[:-4]) #Der Name des aktuellen Tracks wird gesetzt
 #############################################################################
 #Direct Play
 #############################################################################
@@ -303,9 +369,22 @@ manager.grid(column=1, row=1, sticky=(N, W, S))
 playframe = ttk.Frame(mainframe, padding="3 3 3 3")
 playframe.grid(column=2, row=1, sticky=(N, E, S))
 
-datmanbutton =ttk.Button(manager, text='Dateimanager', command=switchToDatMan)
+searchlistbutton = ttk.Button(manager, text='Searchlist', command=switchTosearchlist)
 
-playlistbutton =ttk.Button(manager, text='Playlists', command=switchToPlaylist)
+searchlist = Listbox(manager)
+searchlist.bind('<Double-Button-1>', searchlist_play)
+
+searchlistscroll = ttk.Scrollbar(manager, orient=VERTICAL, command=searchlist.yview)
+searchlist.configure(yscrollcommand=searchlistscroll.set)
+
+searchbox = ttk.Entry(manager, textvariable=search_string)
+searchbox.bind('<Return>', start_search('<Return>', path))
+
+searchbutton = ttk.Button(manager, text='Search', command=lambda: start_search('<Return>',path))
+
+datmanbutton = ttk.Button(manager, text='Dateimanager', command=switchToDatMan)
+
+playlistbutton = ttk.Button(manager, text='Playlists', command=switchToPlaylist)
 playlistbutton.grid(column=1, row=1, sticky=(N, W))
 
 akt_pl_txt = ttk.Label(manager, textvariable=currentplaylist)
