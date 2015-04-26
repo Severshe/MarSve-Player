@@ -1,4 +1,20 @@
 #!/usr/bin/env python3
+#############################################################################
+#   {Table of Conent}
+#   {C01}   Verzeichnisse
+#   {C02}   Definitionen und Globalvars
+#   {C03}   Bilder
+#   {C04}   Playlist Funktionen
+#   {C05}   Steuerfunktionen
+#   {C06}   Wechselfunktionen der Linken Seite
+#   {C07}   Keyboardfunktionen
+#   {C08}   Updatefunktion
+#   {C09}   Play Funktionen
+#   {C10}   Playlist Drag and Drop Funktionen
+#   {C11}   Layout Elemente
+#   {C12}   Display Keyboard
+#   {C13}   Scanfunktion 
+#############################################################################
 
 import os
 
@@ -12,8 +28,9 @@ import pyglet
 import math
 
 import threading
-
-#Verzeichnis der zu scannenden Musik und Name der Standardplaylist im Layout.py Ordner
+#############################################################################
+#{C01} Verzeichnis der zu scannenden Musik und Name der Standardplaylist im Layout.py Ordner
+#############################################################################
 #path Pi:
 #path = 
 #path_usb = /media
@@ -36,7 +53,9 @@ root.title("Mp3 Player MarSve")
 root.minsize(480, 320)              #Groesse wird auf PiTFT festgelegt
 root.maxsize(480, 320)
 
-#Definitionen
+#############################################################################
+#{C02} Definitionen und Globalvars
+#############################################################################
 list_loc =[]                        #Liste fuer die Eigentlichen Item Daten der Playlist
 currenttrack_id = 0                 #Welche Track in list_loc spielt gerade
 currenttrack_length = StringVar()   #Wie lang ist diese Track
@@ -48,15 +67,18 @@ playlist_changed = False            #Globalvar die bei Hinzufuegen und Loeschen 
 curIndex = 0
 search_string = StringVar()
 search_loc =[]
-manager_mode = 0                    #Globalvar in welchem Mode das linke Fenster ist
-overlength = 0                      #Globalvar ob currenttrack_name zu lang fuer die Anzeige ist
-left_right = 0                      #Globalvar ob der Name nach links oder rechts laeuft
-update_runs = 0
+manager_mode = 0                    #Globalvar in welchem Mode das linke Fenster ist (DatMan = 0, USB = 1)
+search_mode = False                 #Globalvar ob im Suchmodes
+overlength = 0                      #Globalvar ob und wieviel currenttrack_name zu lang fuer die Anzeige ist
+left_right = False                  #Globalvar ob der Name nach links oder rechts laeuft
+update_runs = False                 #Globalvar ob die Updatefunktion laeuft
 
 player = pyglet.media.Player()
 player.volume = 0.5
 
-#Images
+#############################################################################
+#{C03} Images
+#############################################################################
 #https://www.dropbox.com/s/p27zh500msqtaws/Icon%20Gifs.zip?dl=0
 previmg = PhotoImage(file="previmg.gif")
 nextimg = PhotoImage(file="nextimg.gif")
@@ -73,7 +95,7 @@ datmanimg = PhotoImage(file="datman.gif")
 enterimg = PhotoImage(file="enter.gif")
 
 #############################################################################
-#Playlist Funktionen
+#{C04} Playlist Funktionen
 #############################################################################
 #Funktion zum aufbauen der queue aus list_loc
 def build_queue():
@@ -115,8 +137,9 @@ def playlist_load(event):
 def addToList():
     global manager_mode
     global playlist_changed
-    if manager_mode == 0:
-        if os.path.isfile(manlist.focus()):
+    global search_mode
+    if manager_mode == 0 and not search_mode:
+        if os.path.isfile(manlist.focus()) and manlist.focus()[-4:] == ".mp3":
             playlist.insert(END, os.path.basename(manlist.focus())[:-4])
             list_loc.append(manlist.focus())
         elif os.path.isdir(manlist.focus()):
@@ -128,12 +151,30 @@ def addToList():
                     #for Schleife zum Auslesen der eigentlichen Items
                     k = 0
                     for k in range(0,len(path[j])):
-                        if os.path.isfile(os.path.join(path[0], path[j][k])):
+                        if os.path.isfile(os.path.join(path[0], path[j][k])) and path[j][k][-4:] == ".mp3":
                             playlist.insert(END, path[j][k][:-4])
                             list_loc.append(os.path.join(path[0], path[j][k]))
                     k += 1
                 j += 1
-    elif manager_mode == 2:
+    elif manager_mode == 1 and not search_mode:
+        if os.path.isfile(USBlist.focus()) and USBlist.focus()[-4:] == ".mp3":
+            playlist.insert(END, os.path.basename(USBlist.focus())[:-4])
+            list_loc.append(USBlist.focus())
+        elif os.path.isdir(USBlist.focus()):
+            #for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
+            for path in os.walk(USBlist.focus()):
+                j = 1
+                #for Schleife zum Auslesen von unter Pfaden und Dateien
+                for j in range(1, 3):
+                    #for Schleife zum Auslesen der eigentlichen Items
+                    k = 0
+                    for k in range(0,len(path[j])):
+                        if os.path.isfile(os.path.join(path[0], path[j][k])) and path[j][k][-4:] == ".mp3":
+                            playlist.insert(END, path[j][k][:-4])
+                            list_loc.append(os.path.join(path[0], path[j][k]))
+                    k += 1
+                j += 1
+    elif search_mode:
         idxs = searchlist.curselection()
         idx = int(idxs[0])
         playlist.insert(END, os.path.basename(search_loc[idx])[:-4])
@@ -166,7 +207,7 @@ def delFromList():
         playlist.selection_set(idx)
 
 #############################################################################
-#Steuerfunktionen
+#{C05} Steuerfunktionen
 #############################################################################
 #Funktion fuer den naechsten Track
 def nexttrack():
@@ -227,7 +268,7 @@ def start_search(event):
             #for Schleife zum Auslesen der eigentlichen Items
             k = 0
             for k in range(0,len(path_i[j])):
-                if os.path.isfile(os.path.join(path_i[0], path_i[j][k])):
+                if os.path.isfile(os.path.join(path_i[0], path_i[j][k])) and path_i[j][k][-4:] == ".mp3":
                     if str.casefold(search_string.get()) in str.casefold(path_i[j][k]):
                         search_loc.append(os.path.join(path_i[0], path_i[j][k]))
                         searchlist.insert(END, path_i[j][k][:-4])
@@ -235,12 +276,14 @@ def start_search(event):
             j += 1
 
 #############################################################################
-#Wechselfunktionen der Linken Seite
+#{C06} Wechselfunktionen der Linken Seite
 #############################################################################
     
 def switchToUSB():                   #Zu USBlist 1
     global manager_mode
+    global search_mode
     manager_mode = 1
+    search_mode = False
     USBbutton.grid_forget()
     pl_ls_list.grid_forget()
     pl_ls_listscroll.grid_forget()
@@ -261,6 +304,8 @@ def switchToUSB():                   #Zu USBlist 1
     
 def switchTosearchlist():               #Von zu Searchlist
     global manager_mode
+    global search_mode
+    search_mode = True
     searchlistbutton.grid_forget()
     pl_ls_list.grid_forget()
     pl_ls_listscroll.grid_forget()
@@ -280,6 +325,8 @@ def switchTosearchlist():               #Von zu Searchlist
     searchbox.focus_set()
 
 def switchToPlaylist():                 #Von Dateimanager 0 zu Playlists_lists
+    global search_mode
+    search_mode = False
     playlistbutton.grid_forget()
     manlist.grid_forget()
     manlistscroll.grid_forget()
@@ -298,8 +345,11 @@ def switchToPlaylist():                 #Von Dateimanager 0 zu Playlists_lists
     
 def switchToDatMan():                   #Von zu Dateimanager 0
     global manager_mode
+    global search_mode
     manager_mode = 0
+    search_mode = False
     datmanbutton.grid_forget()
+    USBbutton.grid_forget()
     USBlist.grid_forget()
     USBlistscroll.grid_forget()
     pl_ls_list.grid_forget()
@@ -317,7 +367,7 @@ def switchToDatMan():                   #Von zu Dateimanager 0
 
 
 #############################################################################
-#Keyboardfunktionen
+#{C07} Keyboardfunktionen
 #############################################################################
 
 def show_keyboard(event):
@@ -417,7 +467,7 @@ def ins_spc():
     searchbox.insert(END, ' ')
 
 #############################################################################
-#Update
+#{C08} Updatefunktion
 #############################################################################
 def update_clock():                                     #Funktion fuer regelmaessige Updates 
     global overlength
@@ -437,7 +487,7 @@ def update_clock():                                     #Funktion fuer regelmaes
         overlength=0
             
     if player.playing:
-        update_runs = 1
+        update_runs = True
         threading.Timer(0.25, update_clock).start()     #Intervall in dem Updates geschehen
         
         tracklength = math.ceil(player.source.duration) #Berechnung der Tracklenge in min und sec
@@ -450,33 +500,33 @@ def update_clock():                                     #Funktion fuer regelmaes
         currenttrack_length.set('%i:%.2i/%i:%.2i' %(playmin, playsec, trackmin, tracksec))
         probar["value"] = player.time                      #Der Fortschritt der Progressbar wird gesetzt
         if len(currenttrack_fullname) > 36:
-            if left_right == 0:
+            if not left_right:
                 currenttrack_name.set(currenttrack_fullname[overlength:(36+overlength)])
                 overlength += 1
-            if left_right == 1:
+            else:
                 currenttrack_name.set(currenttrack_fullname[overlength:(36+overlength)])
                 overlength -= 1
             if overlength == 0:
-                left_right = 0
+                left_right = False
             elif overlength == len(playlist.get(currenttrack_id))-36:
-                left_right = 1
+                left_right = True
         else:
             currenttrack_name.set(currenttrack_fullname)
 
 #############################################################################
-#Play Funktionen
+#{C09} Play Funktionen
 #############################################################################
 
 def standard_play():
     global update_runs
     global left_right
     global overlength
-    left_right = 0
+    left_right = False
     overlength = 0
     playbutton["image"]=pauseimg
     player.play()
     probar["maximum"] = player.source.duration
-    if update_runs == 0:
+    if not update_runs:
         update_clock()
 
 #Play/Pause
@@ -486,7 +536,7 @@ def play_pause():
     if player.playing:
         player.pause()
         playbutton["image"]=playimg
-        update_runs = 0
+        update_runs = False
     else:
         if not player.source:
             build_queue()
@@ -506,20 +556,26 @@ def searchlist_play(event):
     player.delete()                             #Queue wird geloescht
     music = pyglet.media.load(search_loc[idx])
     player.queue(music)
-    #currenttrack_name.set(searchlist.get(idx)[:-4][:36]) #Der Name des aktuellen Tracks wird gesetzt
     currenttrack_fullname = searchlist.get(idx)
     standard_play()
 
 #Direct Play des Dateitrees
 def direkt_play(event):
     global currenttrack_fullname
-    if os.path.isfile(manlist.focus()):
+    global manager_mode
+    if os.path.isfile(manlist.focus()) and manlist.focus()[-4:] == ".mp3" and manager_mode == 0:
         player.delete()
         music = pyglet.media.load(manlist.focus())
         player.queue(music)
         source = player.source
-        #currenttrack_name.set(os.path.basename(manlist.focus())[:-4]) #Der Name des aktuellen Tracks wird gesetzt
         currenttrack_fullname = os.path.basename(manlist.focus())[:-4]
+        standard_play()
+    elif os.path.isfile(USBlist.focus()) and USBlist.focus()[-4:] == ".mp3" and manager_mode == 1:
+        player.delete()
+        music = pyglet.media.load(USBlist.focus())
+        player.queue(music)
+        source = player.source
+        currenttrack_fullname = os.path.basename(USBlist.focus())[:-4]
         standard_play()
 
 #Track aus Playlist wird gestartet
@@ -531,12 +587,11 @@ def playlist_play(event):
     currenttrack_id = idx
     player.delete() #Queue wird geloescht
     build_queue()
-    #currenttrack_name.set(playlist.get(currenttrack_id)[:36]) #Der Name des aktuellen Tracks wird gesetzt
     currenttrack_fullname = playlist.get(currenttrack_id)
     standard_play()
 
 #############################################################################
-#Playlist Drag and Drop Funktionen
+#{C10} Playlist Drag and Drop Funktionen
 #############################################################################
 def setCurrent(event):
     global curIndex
@@ -564,7 +619,7 @@ def shiftSelection(event):
     write_akt_pl()
 
 #############################################################################
-#Layout Elemente
+#{C11} Layout Elemente
 #############################################################################
 #Frames
 mainframe = ttk.Frame(root, padding="3 3 3 3")
@@ -700,7 +755,7 @@ for i in range (0, len(standard_playlist)):
 plfile.close()
 
 #############################################################################
-#Display Keyboard
+#{C12} Display Keyboard
 #############################################################################
 keystyle = ttk.Style()
 keystyle.configure('Key.TButton', font="Helvetica 20 bold")
@@ -795,12 +850,10 @@ mbutton.grid(column=7, row=3)
 
 spacebutton = ttk.Button(keyboardcanvas, width=6, text='', style = "Key.TButton", command=ins_spc)
 spacebutton.grid(column=8, row=3,columnspan=3)
-#############################################################################
-#Display Keyboard
-#############################################################################
 
-
-#Scanfunktion (Zu scannendes Verzeichnis, Treeview zum eintragen)
+#############################################################################
+#{C13} Scanfunktion (Zu scannendes Verzeichnis, Treeview zum eintragen)
+#############################################################################
 def scanPath(verz, list):
     i = 0
     #for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
