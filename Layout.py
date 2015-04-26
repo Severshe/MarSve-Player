@@ -532,6 +532,7 @@ def standard_play():
 #Play/Pause
 def play_pause():
     global currenttrack_id
+    global currenttrack_fullname
     global update_runs
     if player.playing:
         player.pause()
@@ -540,7 +541,9 @@ def play_pause():
     else:
         if not player.source:
             build_queue()
-            currenttrack_id = currenttrack_id - 1
+            #currenttrack_id = currenttrack_id - 1
+            print(currenttrack_id)
+            currenttrack_fullname = playlist.get(currenttrack_id)
         if player.time >= player.source.duration:
             player.seek(0)
         playlist.selection_clear(0, 'end')
