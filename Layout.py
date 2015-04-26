@@ -541,8 +541,6 @@ def play_pause():
     else:
         if not player.source:
             build_queue()
-            #currenttrack_id = currenttrack_id - 1
-            print(currenttrack_id)
             currenttrack_fullname = playlist.get(currenttrack_id)
         if player.time >= player.source.duration:
             player.seek(0)
