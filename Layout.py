@@ -57,6 +57,7 @@ player = pyglet.media.Player()
 player.volume = 0.5
 
 #Images
+#https://www.dropbox.com/s/p27zh500msqtaws/Icon%20Gifs.zip?dl=0
 previmg = PhotoImage(file="previmg.gif")
 nextimg = PhotoImage(file="nextimg.gif")
 playimg = PhotoImage(file="playimg.gif")
