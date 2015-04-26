@@ -209,21 +209,28 @@ def voldown():
         volbar["value"] = player.volume
         
 #Funktion zum Durchsuchen der Dateien
-def start_search(event, verz):
+def start_search(event):
+    global manager_mode
+    global path
+    global path_usb
+    if manager_mode == 0:
+        verz = path
+    else:
+        verz = path_usb
     search_loc.clear()
     searchlist.delete(0, 'end')
-    #for Schleife zum Erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
-    for path in os.walk(verz):
+    #for Schleife zum Erstellen der Dateiliste "path_i" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
+    for path_i in os.walk(verz):
         j = 1
         #for Schleife zum Auslesen von unter Pfaden und Dateien
         for j in range(1, 3):
             #for Schleife zum Auslesen der eigentlichen Items
             k = 0
-            for k in range(0,len(path[j])):
-                if os.path.isfile(os.path.join(path[0], path[j][k])):
-                    if str.casefold(search_string.get()) in str.casefold(path[j][k]):
-                        search_loc.append(os.path.join(path[0], path[j][k]))
-                        searchlist.insert(END, path[j][k][:-4])
+            for k in range(0,len(path_i[j])):
+                if os.path.isfile(os.path.join(path_i[0], path_i[j][k])):
+                    if str.casefold(search_string.get()) in str.casefold(path_i[j][k]):
+                        search_loc.append(os.path.join(path_i[0], path_i[j][k]))
+                        searchlist.insert(END, path_i[j][k][:-4])
                 k += 1
             j += 1
 
@@ -231,52 +238,80 @@ def start_search(event, verz):
 #Wechselfunktionen der Linken Seite
 #############################################################################
     
-def switchToUSB():                   #Von Searchlist 2 zu USBlist 3
+def switchToUSB():                   #Zu USBlist 1
     global manager_mode
-    manager_mode = 3
+    manager_mode = 1
     USBbutton.grid_forget()
+    pl_ls_list.grid_forget()
+    pl_ls_listscroll.grid_forget()
+    manlist.grid_forget()
+    manlistscroll.grid_forget()
     searchlist.grid_forget()
     searchcanvas.grid_forget()
     searchlistscroll.grid_forget()
     searchbox.grid_forget()
     searchbutton.grid_forget()
+    searchlistbutton.grid_forget()
+    searchlistbutton.grid(column=1, row=1, sticky=(N, E))
     datmanbutton.grid(column=1, row=1, sticky=(N, W))
     USBlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
     USBlistscroll.grid(column=3, row=2, sticky=(N, E, S))
     USBlist.delete(*USBlist.get_children())
     scanPath(path_usb, USBlist)         #mp3liste wird erstellt
     
-def switchTosearchlist():               #Von Playlists_lists 1 zu Searchlist 2
+def switchTosearchlist():               #Von zu Searchlist
     global manager_mode
-    manager_mode = 2
     searchlistbutton.grid_forget()
     pl_ls_list.grid_forget()
     pl_ls_listscroll.grid_forget()
-    USBbutton.grid(column=1, row=1, sticky=(N, W))
+    manlist.grid_forget()
+    manlistscroll.grid_forget()
+    USBlist.grid_forget()
+    USBlistscroll.grid_forget()
+    if manager_mode == 0:
+        datmanbutton.grid(column=1, row=1, sticky=(N, E))
+    else:
+        USBbutton.grid(column=1, row=1, sticky=(N, E))
     searchlist.grid(column=1, row=1, columnspan=1, sticky=(N, W, E, S))
     searchcanvas.grid(column=1, row=3, columnspan=3, sticky=(N, W, E, S))
     searchlistscroll.grid(column=1, row=1, sticky=(N, E, S))
-    searchbox.grid(column=1, row=2, sticky=(N, W))
-    searchbutton.grid(column=3, row=2, sticky=(N, W))
+    searchbox.grid(column=1, row=2,columnspan=2, sticky=(N, W))
+    searchbutton.grid(column=3, row=2, sticky=(N, E))
     searchbox.focus_set()
 
-def switchToPlaylist():                 #Von Dateimanager 0 zu Playlists_lists 1
-    global manager_mode
-    manager_mode = 1
+def switchToPlaylist():                 #Von Dateimanager 0 zu Playlists_lists
     playlistbutton.grid_forget()
     manlist.grid_forget()
     manlistscroll.grid_forget()
-    searchlistbutton.grid(column=1, row=1, sticky=(N, W))
+    searchlist.grid_forget()
+    searchcanvas.grid_forget()
+    searchlistscroll.grid_forget()
+    searchbox.grid_forget()
+    searchbutton.grid_forget()
+    searchlistbutton.grid_forget()
+    USBlist.grid_forget()
+    USBlistscroll.grid_forget()
+    datmanbutton.grid(column=1, row=1, sticky=(N, E))
+    USBbutton.grid(column=1, row=1, sticky=(N, W))
     pl_ls_list.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
     pl_ls_listscroll.grid(column=3, row=2, sticky=(N, E, S))
     
-def switchToDatMan():                   #Von USBlist 3 zu Dateimanager 0
+def switchToDatMan():                   #Von zu Dateimanager 0
     global manager_mode
     manager_mode = 0
     datmanbutton.grid_forget()
     USBlist.grid_forget()
     USBlistscroll.grid_forget()
+    pl_ls_list.grid_forget()
+    pl_ls_listscroll.grid_forget()
+    searchlist.grid_forget()
+    searchcanvas.grid_forget()
+    searchlistscroll.grid_forget()
+    searchbox.grid_forget()
+    searchbutton.grid_forget()
+    searchlistbutton.grid_forget()
     playlistbutton.grid(column=1, row=1, sticky=(N, W))
+    searchlistbutton.grid(column=1, row=1, sticky=(N, E))
     manlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
     manlistscroll.grid(column=3, row=2, sticky=(N, E, S))
 
@@ -355,7 +390,7 @@ def ins_l():
     searchbox.insert(END, 'l')
     
 def ins_ent():
-    start_search('<Return>', path)
+    start_search('<Return>')
     
 def ins_y():
     searchbox.insert(END, 'y')
@@ -546,6 +581,7 @@ playframe.grid(column=2, row=1, sticky=(N, E, S))
 
 #Search Window
 searchlistbutton = ttk.Button(manager, width=2, image=searchimg, command=switchTosearchlist)
+searchlistbutton.grid(column=1, row=1, sticky=(N, E))
 
 searchcanvas = Canvas(manager, height = 350, width = 200)
 searchcanvas.grid_propagate(False)
@@ -556,12 +592,12 @@ searchlist.bind('<Double-Button-1>', searchlist_play)
 searchlistscroll = ttk.Scrollbar(searchcanvas, orient=VERTICAL, command=searchlist.yview)
 searchlist.configure(yscrollcommand=searchlistscroll.set)
 
-searchbox = ttk.Entry(manager, textvariable=search_string)
-searchbox.bind('<Return>', start_search('<Return>', path))
+searchbox = ttk.Entry(manager, width=27, textvariable=search_string)
+searchbox.bind('<Return>', start_search('<Return>'))
 searchbox.bind('<FocusIn>', show_keyboard)
 searchbox.bind('<FocusOut>', hide_keyboard)
 
-searchbutton = ttk.Button(manager, width=2, image=searchimg, command=lambda: start_search('<Return>',path))
+searchbutton = ttk.Button(manager, width=2, image=searchimg, command=lambda: start_search('<Return>'))
 
 #Datei Manager Window
 datmanbutton = ttk.Button(manager, width=2, image=datmanimg, command=switchToDatMan)
