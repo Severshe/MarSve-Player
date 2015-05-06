@@ -9,11 +9,12 @@
 #   {C06}   Wechselfunktionen der Linken Seite
 #   {C07}   Keyboardfunktionen
 #   {C08}   Updatefunktion
-#   {C09}   Play Funktionen
-#   {C10}   Playlist Drag and Drop Funktionen
-#   {C11}   Layout Elemente
-#   {C12}   Display Keyboard
-#   {C13}   Scanfunktion 
+#   {C09}   Optionen Funktionen
+#   {C10}   Play Funktionen
+#   {C11}   Playlist Drag and Drop Funktionen
+#   {C12}   Layout Elemente
+#   {C13}   Display Keyboard
+#   {C14}   Scanfunktion 
 #############################################################################
 
 import os
@@ -22,6 +23,8 @@ from tkinter import *
 from tkinter import ttk
 
 import pyglet
+
+import random
 
 #from pytag import Audio
 
@@ -32,10 +35,10 @@ import threading
 #{C01} Verzeichnis der zu scannenden Musik und Name der Standardplaylist im Layout.py Ordner
 #############################################################################
 #path Pi:
-#path = 
-#path_usb = /media
-#akt_pl = 
-#path_pl = 
+# path = "/media/pi/USBSTICK/MarSve-Player"
+# path_usb = "/media/pi/USBSTICK/MP3-Player"
+# akt_pl = "standard_playlist.lst"
+# path_pl = "/media/pi/USBSTICK/MarSve-Player/playlists"
 #path Martin:
 #path = "/Users/Luftikus/Desktop/mp3"
 #path_usb =
@@ -49,6 +52,7 @@ path_pl = "F:\Downloads\MarSve-Player\playlists"
 
 root = Tk()
 root.title("Mp3 Player MarSve")
+#os.system("sudo pkill lxpanel")
 #root.wm_overrideredirect(True)     #Option fuer randloses Fenster
 root.minsize(480, 320)              #Groesse wird auf PiTFT festgelegt
 root.maxsize(480, 320)
@@ -72,6 +76,9 @@ search_mode = False                 #Globalvar ob im Suchmodes
 overlength = 0                      #Globalvar ob und wieviel currenttrack_name zu lang fuer die Anzeige ist
 left_right = False                  #Globalvar ob der Name nach links oder rechts laeuft
 update_runs = False                 #Globalvar ob die Updatefunktion laeuft
+options_show = False                #Globalvar ob die Optionen gezeigt werden
+shuffle_var = BooleanVar()
+shuffle_var.set(False)
 
 player = pyglet.media.Player()
 player.volume = 0.5
@@ -93,15 +100,28 @@ searchimg = PhotoImage(file="search.gif")
 pllstimg = PhotoImage(file="pllst.gif")
 datmanimg = PhotoImage(file="datman.gif")
 enterimg = PhotoImage(file="enter.gif")
+optionimg = PhotoImage(file="options.gif")
+refreshimg = PhotoImage(file="refresh.gif")
+exitimg = PhotoImage(file="exit.gif")
 
 #############################################################################
 #{C04} Playlist Funktionen
 #############################################################################
 #Funktion zum aufbauen der queue aus list_loc
 def build_queue():
+    global currenttrack_id
+    global shuffle_var
+    if shuffle_var.get() == True:
+        shuffle_id = currenttrack_id
+        while shuffle_id == currenttrack_id:
+            currenttrack_id = random.randrange(0, len(list_loc), 1)
     for i in range(currenttrack_id, len(list_loc)):
         music = pyglet.media.load(list_loc[i])
         player.queue(music)
+    if currenttrack_id == len(list_loc):
+        music = pyglet.media.load(list_loc[0])
+        player.queue(music)
+    print(shuffle_var.get())
 
 #Funktion zum Sichern der aktuellen Playlist
 def write_akt_pl():
@@ -274,6 +294,12 @@ def start_search(event):
                         searchlist.insert(END, path_i[j][k][:-4])
                 k += 1
             j += 1
+            
+#Exit Funktion
+
+def exit_player():
+    player.delete()
+    exit()
 
 #############################################################################
 #{C06} Wechselfunktionen der Linken Seite
@@ -296,11 +322,10 @@ def switchToUSB():                   #Zu USBlist 1
     searchbutton.grid_forget()
     searchlistbutton.grid_forget()
     searchlistbutton.grid(column=1, row=1, sticky=(N, E))
-    datmanbutton.grid(column=1, row=1, sticky=(N, W))
+    datmanbutton.grid(column=1, row=1, sticky=(N))
     USBlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
     USBlistscroll.grid(column=3, row=2, sticky=(N, E, S))
-    USBlist.delete(*USBlist.get_children())
-    scanPath(path_usb, USBlist)         #mp3liste wird erstellt
+    #USBlist.delete(*USBlist.get_children())
     
 def switchTosearchlist():               #Von zu Searchlist
     global manager_mode
@@ -339,7 +364,7 @@ def switchToPlaylist():                 #Von Dateimanager 0 zu Playlists_lists
     USBlist.grid_forget()
     USBlistscroll.grid_forget()
     datmanbutton.grid(column=1, row=1, sticky=(N, E))
-    USBbutton.grid(column=1, row=1, sticky=(N, W))
+    USBbutton.grid(column=1, row=1, sticky=(N))
     pl_ls_list.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
     pl_ls_listscroll.grid(column=3, row=2, sticky=(N, E, S))
     
@@ -360,11 +385,20 @@ def switchToDatMan():                   #Von zu Dateimanager 0
     searchbox.grid_forget()
     searchbutton.grid_forget()
     searchlistbutton.grid_forget()
-    playlistbutton.grid(column=1, row=1, sticky=(N, W))
+    playlistbutton.grid(column=1, row=1, sticky=(N))
     searchlistbutton.grid(column=1, row=1, sticky=(N, E))
     manlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
     manlistscroll.grid(column=3, row=2, sticky=(N, E, S))
 
+def switchOptions():
+    global options_show
+    if options_show == False:
+        optioncanvas.grid_propagate(False)
+        optioncanvas.grid(column=1, row=1, columnspan=2)
+        options_show = True
+    elif options_show == True:
+        optioncanvas.grid_forget()
+        options_show = False
 
 #############################################################################
 #{C07} Keyboardfunktionen
@@ -474,15 +508,15 @@ def update_clock():                                     #Funktion fuer regelmaes
     global left_right
     global update_runs
     global currenttrack_fullname
+    global currenttrack_id
+    global playlist_changed
     if probar["maximum"] != player.source.duration:        #If Routine, falls der Track sich geaendert hat
-        global currenttrack_id                          #ohne Eingreifen (automatischer next Track)
-        global playlist_changed
-        currenttrack_id = currenttrack_id + 1
-        if playlist_changed:
-            player.delete()
-            build_queue()
-            player.play()
-            playlist_changed = False
+        currenttrack_id = currenttrack_id + 1              #ohne Eingreifen (automatischer next Track)
+        player.delete()
+        build_queue()
+        player.play()
+        playlist_changed = False
+        currenttrack_fullname = currenttrack_fullname = playlist.get(currenttrack_id)
         probar["maximum"] = player.source.duration         #Das Maximum der Progressbar wird gesetzt
         overlength=0
             
@@ -514,7 +548,17 @@ def update_clock():                                     #Funktion fuer regelmaes
             currenttrack_name.set(currenttrack_fullname)
 
 #############################################################################
-#{C09} Play Funktionen
+#{C09} Optionen Funktionen
+#############################################################################
+            
+def refreshUSB():
+    for i in USBlist.get_children():
+        USBlist.delete(i)
+    scanPath(path_usb, USBlist)         #USBliste wird erstellt
+    
+
+#############################################################################
+#{C10} Play Funktionen
 #############################################################################
 
 def standard_play():
@@ -590,9 +634,16 @@ def playlist_play(event):
     build_queue()
     currenttrack_fullname = playlist.get(currenttrack_id)
     standard_play()
+    
+def shuffle_change():
+    global shuffle_var
+    if shuffle_var == False:
+        shuffle_var.set(True)
+    else:
+        shuffle_var.set(False)
 
 #############################################################################
-#{C10} Playlist Drag and Drop Funktionen
+#{C11} Playlist Drag and Drop Funktionen
 #############################################################################
 def setCurrent(event):
     global curIndex
@@ -600,6 +651,7 @@ def setCurrent(event):
 
 def shiftSelection(event):
     global curIndex
+    global playlist_changed
     i = playlist.nearest(event.y)
     if i < curIndex:
         x = playlist.get(i)
@@ -617,10 +669,11 @@ def shiftSelection(event):
         playlist.insert(i-1, x)
         list_loc.insert(i-1, x_list)
         curIndex = i
+    playlist_changed = True
     write_akt_pl()
 
 #############################################################################
-#{C11} Layout Elemente
+#{C12} Layout Elemente
 #############################################################################
 #Frames
 mainframe = ttk.Frame(root, padding="3 3 3 3")
@@ -655,8 +708,35 @@ searchbox.bind('<FocusOut>', hide_keyboard)
 
 searchbutton = ttk.Button(manager, width=2, image=searchimg, command=lambda: start_search('<Return>'))
 
+#Option Window
+#optioncanvas = Canvas(mainframe, height = 150, width = 300)
+optioncanvas = Canvas(mainframe, height = 150, width = 300, bd=5, relief = RAISED, highlightthickness=0)
+optioncanvas.grid(column=1, row=1, columnspan=2)
+optioncanvas.grid_propagate(False)
+
+refreshUSB_txt = ttk.Label(optioncanvas, text=("Refresh USB"))
+refreshUSB_txt.grid(column=1, row=1, sticky=(N), padx=5, pady=5)
+
+refreshUSBbutton = ttk.Button(optioncanvas, width=2, image=refreshimg, command=refreshUSB)
+refreshUSBbutton.grid(column=1, row=2, sticky=(N))
+
+shuffle_txt = ttk.Label(optioncanvas, text=("Shuffle"))
+shuffle_txt.grid(column=1, row=3, sticky=(N), padx=5)
+
+shuffle_box = ttk.Checkbutton(optioncanvas, variable=shuffle_var, onvalue=True, offvalue=False)
+shuffle_box.grid(column=1, row=4, sticky=(N))
+
+exit_txt = ttk.Label(optioncanvas, text=("Exit"))
+exit_txt.grid(column=2, row=1, sticky=(N), padx=5, pady=5)
+
+exitbutton = ttk.Button(optioncanvas, width=2, image=exitimg, command=exit_player)
+exitbutton.grid(column=2, row=2, sticky=(N))
+
 #Datei Manager Window
 datmanbutton = ttk.Button(manager, width=2, image=datmanimg, command=switchToDatMan)
+
+optionbutton = ttk.Button(manager, width=2, image=optionimg, command=switchOptions)
+optionbutton.grid(column=1, row=1, sticky=(N, W))
 
 manlist = ttk.Treeview(manager, height = 12)
 manlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
@@ -677,7 +757,7 @@ USBlist.configure(yscrollcommand=USBlistscroll.set)
 
 #Playlist Window
 playlistbutton = ttk.Button(manager, width=2, image=pllstimg, command=switchToPlaylist)
-playlistbutton.grid(column=1, row=1, sticky=(N, W))
+playlistbutton.grid(column=1, row=1, sticky=(N))
 
 akt_pl_txt = ttk.Label(manager, textvariable=currentplaylist)
 akt_pl_txt.grid(column=2, row=1, columnspan=2, sticky=(N, W))
@@ -756,7 +836,7 @@ for i in range (0, len(standard_playlist)):
 plfile.close()
 
 #############################################################################
-#{C12} Display Keyboard
+#{C13} Display Keyboard
 #############################################################################
 keystyle = ttk.Style()
 keystyle.configure('Key.TButton', font="Helvetica 20 bold")
@@ -853,7 +933,7 @@ spacebutton = ttk.Button(keyboardcanvas, width=6, text='', style = "Key.TButton"
 spacebutton.grid(column=8, row=3,columnspan=3)
 
 #############################################################################
-#{C13} Scanfunktion (Zu scannendes Verzeichnis, Treeview zum eintragen)
+#{C14} Scanfunktion (Zu scannendes Verzeichnis, Treeview zum eintragen)
 #############################################################################
 def scanPath(verz, list):
     i = 0
@@ -881,7 +961,9 @@ def scanPath(verz, list):
 
 scanPath(path, manlist)         #mp3liste wird erstellt
 scanPath(path_pl, pl_ls_list)   #Playlist Liste wird erstellt
+scanPath(path_usb, USBlist)     #USBliste wird erstellt
 
-for child in mainframe.winfo_children(): child.grid_configure(padx=2, pady=2)
+#for child in mainframe.winfo_children(): child.grid_configure(padx=2, pady=2)
+optioncanvas.grid_forget()
 keyboardcanvas.grid_forget()
 root.mainloop()
