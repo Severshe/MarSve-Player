@@ -71,7 +71,7 @@ playlist_changed = False            #Globalvar die bei Hinzufuegen und Loeschen 
 curIndex = 0
 search_string = StringVar()
 search_loc =[]
-manager_mode = 0                    #Globalvar in welchem Mode das linke Fenster ist (DatMan = 0, USB = 1)
+manager_mode = 0                    #Globalvar in welchem Mode das linke Fenster ist (DatMan = 0, USB = 1, Playlst = 2)
 search_mode = False                 #Globalvar ob im Suchmodes
 overlength = 0                      #Globalvar ob und wieviel currenttrack_name zu lang fuer die Anzeige ist
 left_right = False                  #Globalvar ob der Name nach links oder rechts laeuft
@@ -79,6 +79,7 @@ update_runs = False                 #Globalvar ob die Updatefunktion laeuft
 options_show = False                #Globalvar ob die Optionen gezeigt werden
 shuffle_var = BooleanVar()
 shuffle_var.set(False)
+create_string = StringVar()
 
 player = pyglet.media.Player()
 player.volume = 0.5
@@ -103,6 +104,9 @@ enterimg = PhotoImage(file="enter.gif")
 optionimg = PhotoImage(file="options.gif")
 refreshimg = PhotoImage(file="refresh.gif")
 exitimg = PhotoImage(file="exit.gif")
+folderimg = PhotoImage(file="folder.gif")
+clistimg = PhotoImage(file="c_list.gif")
+confirmimg = PhotoImage(file="confirm.gif")
 
 #############################################################################
 #{C04} Playlist Funktionen
@@ -137,12 +141,13 @@ def write_akt_pl():
 #Funktion zum laden von Playlists
 def playlist_load(event):
     global akt_pl
+    global playlist_changed
     playlist.delete(0, 'end')
     list_loc.clear()
     if os.path.isfile(pl_ls_list.focus()):
         akt_pl = pl_ls_list.focus()
         currentplaylist.set(os.path.basename(akt_pl)[:-4])
-        with open(pl_ls_list.focus(), 'r') as plfile: #standard Playlist wird geladen
+        with open(pl_ls_list.focus(), 'r') as plfile:   #standard Playlist wird geladen
             standard_playlist = plfile.readlines()
         for i in range (0, len(standard_playlist)):     #standard Playlist wird uebertragen
             if i < len(standard_playlist)-1:
@@ -152,6 +157,7 @@ def playlist_load(event):
                 playlist.insert(END, os.path.basename(standard_playlist[i])[:-4])
                 list_loc.append(standard_playlist[i])
             plfile.close()
+    playlist_changed = True
 
 #Funktion zum Hinzufuegen von Songs zur Playlist
 def addToList():
@@ -199,6 +205,8 @@ def addToList():
         idx = int(idxs[0])
         playlist.insert(END, os.path.basename(search_loc[idx])[:-4])
         list_loc.append(search_loc[idx])
+    elif manager_mode == 2:
+        playlist_load('<Button-1>')
     playlist_changed = True
     write_akt_pl()
     
@@ -294,18 +302,12 @@ def start_search(event):
                         searchlist.insert(END, path_i[j][k][:-4])
                 k += 1
             j += 1
-            
-#Exit Funktion
-
-def exit_player():
-    player.delete()
-    exit()
 
 #############################################################################
 #{C06} Wechselfunktionen der Linken Seite
 #############################################################################
     
-def switchToUSB():                   #Zu USBlist 1
+def switchToUSB():                   #Zu USBlist
     global manager_mode
     global search_mode
     manager_mode = 1
@@ -321,13 +323,17 @@ def switchToUSB():                   #Zu USBlist 1
     searchbox.grid_forget()
     searchbutton.grid_forget()
     searchlistbutton.grid_forget()
+    delete_list_button.state(['disabled'])
+    create_folder_button.state(['disabled'])
+    create_pllst_button.state(['disabled'])
+    create_entry.state(['disabled'])
     searchlistbutton.grid(column=1, row=1, sticky=(N, E))
     datmanbutton.grid(column=1, row=1, sticky=(N))
     USBlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
     USBlistscroll.grid(column=3, row=2, sticky=(N, E, S))
     #USBlist.delete(*USBlist.get_children())
     
-def switchTosearchlist():               #Von zu Searchlist
+def switchTosearchlist():               #Zu Searchlist
     global manager_mode
     global search_mode
     search_mode = True
@@ -351,6 +357,8 @@ def switchTosearchlist():               #Von zu Searchlist
 
 def switchToPlaylist():                 #Von Dateimanager 0 zu Playlists_lists
     global search_mode
+    global manager_mode
+    manager_mode = 2
     search_mode = False
     playlistbutton.grid_forget()
     manlist.grid_forget()
@@ -363,6 +371,10 @@ def switchToPlaylist():                 #Von Dateimanager 0 zu Playlists_lists
     searchlistbutton.grid_forget()
     USBlist.grid_forget()
     USBlistscroll.grid_forget()
+    delete_list_button.state(['!disabled'])
+    create_folder_button.state(['!disabled'])
+    create_pllst_button.state(['!disabled'])
+    create_entry.state(['!disabled'])
     datmanbutton.grid(column=1, row=1, sticky=(N, E))
     USBbutton.grid(column=1, row=1, sticky=(N))
     pl_ls_list.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
@@ -385,6 +397,10 @@ def switchToDatMan():                   #Von zu Dateimanager 0
     searchbox.grid_forget()
     searchbutton.grid_forget()
     searchlistbutton.grid_forget()
+    delete_list_button.state(['disabled'])
+    create_folder_button.state(['disabled'])
+    create_pllst_button.state(['disabled'])
+    create_entry.state(['disabled'])
     playlistbutton.grid(column=1, row=1, sticky=(N))
     searchlistbutton.grid(column=1, row=1, sticky=(N, E))
     manlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
@@ -394,7 +410,7 @@ def switchOptions():
     global options_show
     if options_show == False:
         optioncanvas.grid_propagate(False)
-        optioncanvas.grid(column=1, row=1, columnspan=2)
+        optioncanvas.grid(column=1, row=1, columnspan=2, sticky=(N, E))
         options_show = True
     elif options_show == True:
         optioncanvas.grid_forget()
@@ -411,94 +427,182 @@ def hide_keyboard(event):
     keyboardcanvas.grid_forget()
     
 def ins_q():
-    searchbox.insert(END, 'q')
+    if search_mode:
+        searchbox.insert(END, 'q')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'q')
     
 def ins_w():
-    searchbox.insert(END, 'w')
+    if search_mode:
+        searchbox.insert(END, 'w')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'w')
     
 def ins_e():
-    searchbox.insert(END, 'e')
+    if search_mode:
+        searchbox.insert(END, 'e')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'e')
     
 def ins_r():
-    searchbox.insert(END, 'r')
+    if search_mode:
+        searchbox.insert(END, 'r')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'r')
     
 def ins_t():
-    searchbox.insert(END, 't')
+    if search_mode:
+        searchbox.insert(END, 't')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 't')
     
 def ins_z():
-    searchbox.insert(END, 'z')
+    if search_mode:
+        searchbox.insert(END, 'z')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'z')
     
 def ins_u():
-    searchbox.insert(END, 'u')
+    if search_mode:
+        searchbox.insert(END, 'u')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'u')
     
 def ins_i():
-    searchbox.insert(END, 'i')
+    if search_mode:
+        searchbox.insert(END, 'i')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'i')
     
 def ins_o():
-    searchbox.insert(END, 'o')
+    if search_mode:
+        searchbox.insert(END, 'o')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'o')
     
 def ins_p():
-    searchbox.insert(END, 'p')
+    if search_mode:
+        searchbox.insert(END, 'p')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'p')
     
 def ins_bs():
-    if searchbox.selection_present():
-        searchbox.delete("sel.first", "sel.last")
-    else:
-        searchbox.delete(len(searchbox.get())-1)
+    if search_mode:
+        if searchbox.selection_present():
+            searchbox.delete("sel.first", "sel.last")
+        else:
+            searchbox.delete(len(searchbox.get())-1)
+    if options_show and manager_mode == 2:
+        if create_entry.selection_present():
+            create_entry.delete("sel.first", "sel.last")
+        else:
+            create_entry.delete(len(create_entry.get())-1)
     
 def ins_a():
-    searchbox.insert(END, 'a')
+    if search_mode:
+        searchbox.insert(END, 'a')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'a')
     
 def ins_s():
-    searchbox.insert(END, 's')
+    if search_mode:
+        searchbox.insert(END, 's')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 's')
     
 def ins_d():
-    searchbox.insert(END, 'd')
+    if search_mode:
+        searchbox.insert(END, 'd')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'd')
     
 def ins_f():
-    searchbox.insert(END, 'f')
+    if search_mode:
+        searchbox.insert(END, 'f')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'f')
     
 def ins_g():
-    searchbox.insert(END, 'g')
+    if search_mode:
+        searchbox.insert(END, 'g')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'g')
     
 def ins_h():
-    searchbox.insert(END, 'h')
+    if search_mode:
+        searchbox.insert(END, 'h')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'h')
     
 def ins_j():
-    searchbox.insert(END, 'j')
+    if search_mode:
+        searchbox.insert(END, 'j')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'j')
     
 def ins_k():
-    searchbox.insert(END, 'k')
+    if search_mode:
+        searchbox.insert(END, 'k')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'k')
     
 def ins_l():
-    searchbox.insert(END, 'l')
+    if search_mode:
+        searchbox.insert(END, 'l')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'l')
     
 def ins_ent():
-    start_search('<Return>')
+    if search_mode:
+        start_search('<Return>')
     
 def ins_y():
-    searchbox.insert(END, 'y')
+    if search_mode:
+        searchbox.insert(END, 'y')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'y')
     
 def ins_x():
-    searchbox.insert(END, 'x')
+    if search_mode:
+        searchbox.insert(END, 'x')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'x')
     
 def ins_c():
-    searchbox.insert(END, 'c')
+    if search_mode:
+        searchbox.insert(END, 'c')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'c')
     
 def ins_v():
-    searchbox.insert(END, 'v')
+    if search_mode:
+        searchbox.insert(END, 'v')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'v')
     
 def ins_b():
-    searchbox.insert(END, 'b')
+    if search_mode:
+        searchbox.insert(END, 'b')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'b')
     
 def ins_n():
-    searchbox.insert(END, 'n')
+    if search_mode:
+        searchbox.insert(END, 'n')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'n')
     
 def ins_m():
-    searchbox.insert(END, 'm')
+    if search_mode:
+        searchbox.insert(END, 'm')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, 'm')
     
 def ins_spc():
-    searchbox.insert(END, ' ')
+    if search_mode:
+        searchbox.insert(END, ' ')
+    if options_show and manager_mode == 2:
+        create_entry.insert(END, ' ')
 
 #############################################################################
 #{C08} Updatefunktion
@@ -556,6 +660,58 @@ def refreshUSB():
         USBlist.delete(i)
     scanPath(path_usb, USBlist)         #USBliste wird erstellt
     
+#Exit Funktion
+def exit_player():
+    player.delete()
+    exit()
+
+#Create Folder Funktion
+def create_Folder():
+    if create_string.get() != "":                   #Es werden keine Ordner ohne Namen erstellt
+        if os.path.isfile(pl_ls_list.focus()):
+            os.mkdir(os.path.join(os.path.dirname(pl_ls_list.focus()), create_string.get()), mode=0o777)
+        elif os.path.isdir(pl_ls_list.focus()):
+            os.mkdir(os.path.join(pl_ls_list.focus(), create_string.get()), mode=0o777)
+        for i in pl_ls_list.get_children():         #Playlist Liste wird erstellt
+            pl_ls_list.delete(i)
+        scanPath(path_pl, pl_ls_list)
+    
+#Create Playlist Funktion
+def create_List():                                  #Es werden keine Ordner ohne Namen erstellt
+    if create_string.get() != "":
+        if os.path.isfile(pl_ls_list.focus()):
+            file =os.open(os.path.join(os.path.dirname(pl_ls_list.focus()), create_string.get() + ".lst"), os.O_CREAT, mode=0o777)
+            os.close(file)
+        elif os.path.isdir(pl_ls_list.focus()):
+            file = os.open(os.path.join(pl_ls_list.focus(), create_string.get() + ".lst"), os.O_CREAT, mode=0o777)
+            os.close(file)
+        for i in pl_ls_list.get_children():         #Playlist Liste wird erstellt
+            pl_ls_list.delete(i)
+        scanPath(path_pl, pl_ls_list)
+
+def show_confirm():
+    sicher_txt.grid(column=4, row=1, sticky=(N), padx=5, pady=5)
+    confirm_txt.grid(column=4, row=2, sticky=(N), padx=5, pady=5)
+    confirm_button.grid(column=4, row=3, sticky=(N))
+    decline_txt.grid(column=4, row=4, sticky=(N), padx=5, pady=5)
+    decline_button.grid(column=4, row=5, sticky=(N))
+    
+def hide_confirm():
+    sicher_txt.grid_forget()
+    confirm_txt.grid_forget()
+    confirm_button.grid_forget()
+    decline_txt.grid_forget()
+    decline_button.grid_forget()
+    
+def delPlaylist():
+    if os.path.isfile(pl_ls_list.focus()):
+        os.remove(pl_ls_list.focus())
+    elif os.path.isdir(pl_ls_list.focus()):
+        os.rmdir(pl_ls_list.focus())
+    for i in pl_ls_list.get_children():         #Playlist Liste wird erstellt
+        pl_ls_list.delete(i)
+    scanPath(path_pl, pl_ls_list)
+    hide_confirm()
 
 #############################################################################
 #{C10} Play Funktionen
@@ -635,12 +791,12 @@ def playlist_play(event):
     currenttrack_fullname = playlist.get(currenttrack_id)
     standard_play()
     
-def shuffle_change():
-    global shuffle_var
-    if shuffle_var == False:
-        shuffle_var.set(True)
-    else:
-        shuffle_var.set(False)
+# def shuffle_change():
+    # global shuffle_var
+    # if shuffle_var == False:
+        # shuffle_var.set(True)
+    # else:
+        # shuffle_var.set(False)
 
 #############################################################################
 #{C11} Playlist Drag and Drop Funktionen
@@ -709,10 +865,11 @@ searchbox.bind('<FocusOut>', hide_keyboard)
 searchbutton = ttk.Button(manager, width=2, image=searchimg, command=lambda: start_search('<Return>'))
 
 #Option Window
-#optioncanvas = Canvas(mainframe, height = 150, width = 300)
 optioncanvas = Canvas(mainframe, height = 150, width = 300, bd=5, relief = RAISED, highlightthickness=0)
-optioncanvas.grid(column=1, row=1, columnspan=2)
 optioncanvas.grid_propagate(False)
+optioncanvas.create_line((75, 0, 75, 160))
+optioncanvas.create_line((158, 0, 158, 160))
+optioncanvas.create_line((200, 0, 200, 160))
 
 refreshUSB_txt = ttk.Label(optioncanvas, text=("Refresh USB"))
 refreshUSB_txt.grid(column=1, row=1, sticky=(N), padx=5, pady=5)
@@ -721,16 +878,54 @@ refreshUSBbutton = ttk.Button(optioncanvas, width=2, image=refreshimg, command=r
 refreshUSBbutton.grid(column=1, row=2, sticky=(N))
 
 shuffle_txt = ttk.Label(optioncanvas, text=("Shuffle"))
-shuffle_txt.grid(column=1, row=3, sticky=(N), padx=5)
+shuffle_txt.grid(column=1, row=3, sticky=(N), pady=5)
 
 shuffle_box = ttk.Checkbutton(optioncanvas, variable=shuffle_var, onvalue=True, offvalue=False)
 shuffle_box.grid(column=1, row=4, sticky=(N))
 
+create_folder_txt = ttk.Label(optioncanvas, text=("Create Folder"))
+create_folder_txt.grid(column=2, row=1, sticky=(N), pady=5)
+
+create_folder_button = ttk.Button(optioncanvas, width=2, image=folderimg, command=create_Folder)
+create_folder_button.grid(column=2, row=2, sticky=(N))
+create_folder_button.state(['disabled'])
+
+create_pllst_txt = ttk.Label(optioncanvas, text=("Create Playlist"))
+create_pllst_txt.grid(column=2, row=3, sticky=(N), pady=5)
+
+create_pllst_button = ttk.Button(optioncanvas, width=2, image=clistimg, command=create_List)
+create_pllst_button.grid(column=2, row=4, sticky=(N))
+create_pllst_button.state(['disabled'])
+
+create_entry = ttk.Entry(optioncanvas, width=12, textvariable=create_string)
+create_entry.grid(column=2, row=5, sticky=(N))
+create_entry.state(['disabled'])
+create_entry.bind('<Return>', start_search('<Return>'))
+create_entry.bind('<FocusIn>', show_keyboard)
+create_entry.bind('<FocusOut>', hide_keyboard)
+
 exit_txt = ttk.Label(optioncanvas, text=("Exit"))
-exit_txt.grid(column=2, row=1, sticky=(N), padx=5, pady=5)
+exit_txt.grid(column=3, row=1, sticky=(N), padx=10, pady=5)
 
 exitbutton = ttk.Button(optioncanvas, width=2, image=exitimg, command=exit_player)
-exitbutton.grid(column=2, row=2, sticky=(N))
+exitbutton.grid(column=3, row=2, sticky=(N))
+
+delete_list_txt = ttk.Label(optioncanvas, text=("Delete"))
+delete_list_txt.grid(column=3, row=3, sticky=(N), padx=5, pady=5)
+
+delete_list_button = ttk.Button(optioncanvas, width=2, image=entimg, command=show_confirm)
+delete_list_button.state(['disabled'])
+delete_list_button.grid(column=3, row=4, sticky=(N))
+
+sicher_txt = ttk.Label(optioncanvas, text=("Sicher?"))
+
+confirm_txt = ttk.Label(optioncanvas, text=("Ja"))
+
+confirm_button = ttk.Button(optioncanvas, width=2, image=confirmimg, command=delPlaylist)
+
+decline_txt = ttk.Label(optioncanvas, text=("Nein"))
+
+decline_button = ttk.Button(optioncanvas, width=2, image=entimg, command=hide_confirm)
 
 #Datei Manager Window
 datmanbutton = ttk.Button(manager, width=2, image=datmanimg, command=switchToDatMan)
