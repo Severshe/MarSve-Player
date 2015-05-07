@@ -57,6 +57,8 @@ root.title("Mp3 Player MarSve")
 root.minsize(480, 320)              #Groesse wird auf PiTFT festgelegt
 root.maxsize(480, 320)
 
+player = pyglet.media.Player()
+
 #############################################################################
 #{C02} Definitionen und Globalvars
 #############################################################################
@@ -79,9 +81,10 @@ update_runs = False                 #Globalvar ob die Updatefunktion laeuft
 options_show = False                #Globalvar ob die Optionen gezeigt werden
 shuffle_var = BooleanVar()
 shuffle_var.set(False)
+copy_var = BooleanVar()
+copy_var.set(False)
 create_string = StringVar()
 
-player = pyglet.media.Player()
 player.volume = 0.5
 
 #############################################################################
@@ -691,10 +694,10 @@ def create_List():                                  #Es werden keine Ordner ohne
 
 def show_confirm():
     sicher_txt.grid(column=4, row=1, sticky=(N), padx=5, pady=5)
-    confirm_txt.grid(column=4, row=2, sticky=(N), padx=5, pady=5)
-    confirm_button.grid(column=4, row=3, sticky=(N))
-    decline_txt.grid(column=4, row=4, sticky=(N), padx=5, pady=5)
-    decline_button.grid(column=4, row=5, sticky=(N))
+    confirm_txt.grid(column=4, row=3, sticky=(N), padx=5)
+    confirm_button.grid(column=4, row=4, sticky=(N))
+    decline_txt.grid(column=4, row=5, sticky=(N), padx=5)
+    decline_button.grid(column=4, row=6, sticky=(N))
     
 def hide_confirm():
     sicher_txt.grid_forget()
@@ -790,13 +793,6 @@ def playlist_play(event):
     build_queue()
     currenttrack_fullname = playlist.get(currenttrack_id)
     standard_play()
-    
-# def shuffle_change():
-    # global shuffle_var
-    # if shuffle_var == False:
-        # shuffle_var.set(True)
-    # else:
-        # shuffle_var.set(False)
 
 #############################################################################
 #{C11} Playlist Drag and Drop Funktionen
@@ -872,46 +868,55 @@ optioncanvas.create_line((158, 0, 158, 160))
 optioncanvas.create_line((200, 0, 200, 160))
 
 refreshUSB_txt = ttk.Label(optioncanvas, text=("Refresh USB"))
-refreshUSB_txt.grid(column=1, row=1, sticky=(N), padx=5, pady=5)
+refreshUSB_txt.grid(column=1, row=1, sticky=(N), padx = 5, pady = 5)
 
 refreshUSBbutton = ttk.Button(optioncanvas, width=2, image=refreshimg, command=refreshUSB)
 refreshUSBbutton.grid(column=1, row=2, sticky=(N))
 
 shuffle_txt = ttk.Label(optioncanvas, text=("Shuffle"))
-shuffle_txt.grid(column=1, row=3, sticky=(N), pady=5)
+shuffle_txt.grid(column=1, row=3, sticky=(N))
 
 shuffle_box = ttk.Checkbutton(optioncanvas, variable=shuffle_var, onvalue=True, offvalue=False)
 shuffle_box.grid(column=1, row=4, sticky=(N))
 
+copy_txt = ttk.Label(optioncanvas, text=("USB Copy"))
+copy_txt.grid(column=1, row=5, sticky=(N))
+
+copy_box = ttk.Checkbutton(optioncanvas, variable=copy_var, onvalue=True, offvalue=False)
+copy_box.grid(column=1, row=6, sticky=(N))
+
 create_folder_txt = ttk.Label(optioncanvas, text=("Create Folder"))
-create_folder_txt.grid(column=2, row=1, sticky=(N), pady=5)
+create_folder_txt.grid(column=2, row=1, sticky=(N), padx = 3, pady = 5)
 
 create_folder_button = ttk.Button(optioncanvas, width=2, image=folderimg, command=create_Folder)
 create_folder_button.grid(column=2, row=2, sticky=(N))
 create_folder_button.state(['disabled'])
 
 create_pllst_txt = ttk.Label(optioncanvas, text=("Create Playlist"))
-create_pllst_txt.grid(column=2, row=3, sticky=(N), pady=5)
+create_pllst_txt.grid(column=2, row=3, sticky=(N))
 
 create_pllst_button = ttk.Button(optioncanvas, width=2, image=clistimg, command=create_List)
 create_pllst_button.grid(column=2, row=4, sticky=(N))
 create_pllst_button.state(['disabled'])
 
+filename_txt = ttk.Label(optioncanvas, text=("Name:"))
+filename_txt.grid(column=2, row=5, sticky=(N))
+
 create_entry = ttk.Entry(optioncanvas, width=12, textvariable=create_string)
-create_entry.grid(column=2, row=5, sticky=(N))
+create_entry.grid(column=2, row=6, sticky=(N))
 create_entry.state(['disabled'])
 create_entry.bind('<Return>', start_search('<Return>'))
 create_entry.bind('<FocusIn>', show_keyboard)
 create_entry.bind('<FocusOut>', hide_keyboard)
 
 exit_txt = ttk.Label(optioncanvas, text=("Exit"))
-exit_txt.grid(column=3, row=1, sticky=(N), padx=10, pady=5)
+exit_txt.grid(column=3, row=1, sticky=(N), padx = 3, pady = 5)
 
 exitbutton = ttk.Button(optioncanvas, width=2, image=exitimg, command=exit_player)
 exitbutton.grid(column=3, row=2, sticky=(N))
 
 delete_list_txt = ttk.Label(optioncanvas, text=("Delete"))
-delete_list_txt.grid(column=3, row=3, sticky=(N), padx=5, pady=5)
+delete_list_txt.grid(column=3, row=3, sticky=(N), padx = 5)
 
 delete_list_button = ttk.Button(optioncanvas, width=2, image=entimg, command=show_confirm)
 delete_list_button.state(['disabled'])
@@ -1161,4 +1166,16 @@ scanPath(path_usb, USBlist)     #USBliste wird erstellt
 #for child in mainframe.winfo_children(): child.grid_configure(padx=2, pady=2)
 optioncanvas.grid_forget()
 keyboardcanvas.grid_forget()
+
+# def getFreeSpace( Laufwerk ):
+    # txt = os.popen( 'dir %s\\' % Laufwerk ).readlines()
+    # txt = txt[-1]
+    # txt = txt.split(",")[1]
+    # txt = txt.split("Bytes")[0]
+    # txt = "".join( txt.split(".") )
+    # return int( txt )
+ 
+# Bytes = getFreeSpace( "e:" )
+# print (Bytes / 1024 / 1024, "MB frei")
+
 root.mainloop()
