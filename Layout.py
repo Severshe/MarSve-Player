@@ -18,6 +18,8 @@
 #############################################################################
 
 import os
+import sys
+import shutil
 
 from tkinter import *
 from tkinter import ttk
@@ -26,7 +28,8 @@ import pyglet
 
 import random
 
-#from pytag import Audio
+if not sys.platform == "win32":
+    from pytag import Audio
 
 import math
 
@@ -35,20 +38,23 @@ import threading
 #{C01} Verzeichnis der zu scannenden Musik und Name der Standardplaylist im Layout.py Ordner
 #############################################################################
 #path Pi:
-# path = "/media/pi/USBSTICK/MarSve-Player"
+# path_main = "/media/pi/USBSTICK/MarSve-Player"
 # path_usb = "/media/pi/USBSTICK/MP3-Player"
 # akt_pl = "standard_playlist.lst"
 # path_pl = "/media/pi/USBSTICK/MarSve-Player/playlists"
 #path Martin:
-#path = "/Users/Luftikus/Desktop/mp3"
+#path_main = "/Users/Luftikus/Desktop/mp3"
 #path_usb =
 #akt_pl = 
 #path_pl = 
 #path Sven:
-path = "F:\Downloads\MarSve-Player\mp3"
-path_usb = "K:\Musik\Alben"
+path_main = "F:\Downloads\MarSve-Player\mp3"
+path_usb = "K:\Musik\MP3-Player"
 akt_pl = "standard_playlist.lst"
 path_pl = "F:\Downloads\MarSve-Player\playlists"
+
+if not os.path.isdir(os.path.join(path_main, "USB")):
+    os.mkdir(os.path.join(path_main, "USB"), mode=0o777)
 
 root = Tk()
 root.title("Mp3 Player MarSve")
@@ -58,6 +64,9 @@ root.minsize(480, 320)              #Groesse wird auf PiTFT festgelegt
 root.maxsize(480, 320)
 
 player = pyglet.media.Player()
+
+if sys.platform == "linux":
+    os.system("amixer -q sset 'Master' 50%")
 
 #############################################################################
 #{C02} Definitionen und Globalvars
@@ -84,6 +93,8 @@ shuffle_var.set(False)
 copy_var = BooleanVar()
 copy_var.set(False)
 create_string = StringVar()
+message_string = StringVar()
+master_volume = 50
 
 player.volume = 0.5
 
@@ -114,6 +125,20 @@ confirmimg = PhotoImage(file="confirm.gif")
 #############################################################################
 #{C04} Playlist Funktionen
 #############################################################################
+
+#Funktion zum pruefen des verfuegbaren Speichers in MB
+def getFreeSpace( Laufwerk ):
+    MB_txt = os.popen( 'dir %s\\' % Laufwerk ).readlines()
+    MB_txt = MB_txt[-1]
+    MB_txt = MB_txt.split(",")[1]
+    MB_txt = MB_txt.split("Bytes")[0]
+    MB_txt = "".join( MB_txt.split(".") )
+    MB_txt = int(MB_txt) / 1024 / 1024
+    GB_txt = int(MB_txt / 1024)
+    MB_txt = int(MB_txt - GB_txt * 1024)
+    txt = [GB_txt , MB_txt]
+    return txt
+
 #Funktion zum aufbauen der queue aus list_loc
 def build_queue():
     global currenttrack_id
@@ -122,13 +147,17 @@ def build_queue():
         shuffle_id = currenttrack_id
         while shuffle_id == currenttrack_id:
             currenttrack_id = random.randrange(0, len(list_loc), 1)
-    for i in range(currenttrack_id, len(list_loc)):
-        music = pyglet.media.load(list_loc[i])
+    if currenttrack_id == len(list_loc)-1:
+        music = pyglet.media.load(list_loc[currenttrack_id])
         player.queue(music)
-    if currenttrack_id == len(list_loc):
         music = pyglet.media.load(list_loc[0])
         player.queue(music)
-    print(shuffle_var.get())
+    else:
+        music = pyglet.media.load(list_loc[currenttrack_id])
+        player.queue(music)
+        music = pyglet.media.load(list_loc[currenttrack_id+1])
+        player.queue(music)
+
 
 #Funktion zum Sichern der aktuellen Playlist
 def write_akt_pl():
@@ -167,6 +196,8 @@ def addToList():
     global manager_mode
     global playlist_changed
     global search_mode
+    global copy_var
+    global path_main
     if manager_mode == 0 and not search_mode:
         if os.path.isfile(manlist.focus()) and manlist.focus()[-4:] == ".mp3":
             playlist.insert(END, os.path.basename(manlist.focus())[:-4])
@@ -186,23 +217,43 @@ def addToList():
                     k += 1
                 j += 1
     elif manager_mode == 1 and not search_mode:
-        if os.path.isfile(USBlist.focus()) and USBlist.focus()[-4:] == ".mp3":
-            playlist.insert(END, os.path.basename(USBlist.focus())[:-4])
-            list_loc.append(USBlist.focus())
-        elif os.path.isdir(USBlist.focus()):
-            #for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
-            for path in os.walk(USBlist.focus()):
-                j = 1
-                #for Schleife zum Auslesen von unter Pfaden und Dateien
-                for j in range(1, 3):
-                    #for Schleife zum Auslesen der eigentlichen Items
-                    k = 0
-                    for k in range(0,len(path[j])):
-                        if os.path.isfile(os.path.join(path[0], path[j][k])) and path[j][k][-4:] == ".mp3":
-                            playlist.insert(END, path[j][k][:-4])
-                            list_loc.append(os.path.join(path[0], path[j][k]))
-                    k += 1
-                j += 1
+        if copy_var == False:
+            if os.path.isfile(USBlist.focus()) and USBlist.focus()[-4:] == ".mp3":
+                playlist.insert(END, os.path.basename(USBlist.focus())[:-4])
+                list_loc.append(USBlist.focus())
+            elif os.path.isdir(USBlist.focus()):
+                #for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
+                for path in os.walk(USBlist.focus()):
+                    j = 1
+                    #for Schleife zum Auslesen von unter Pfaden und Dateien
+                    for j in range(1, 3):
+                        #for Schleife zum Auslesen der eigentlichen Items
+                        k = 0
+                        for k in range(0,len(path[j])):
+                            if os.path.isfile(os.path.join(path[0], path[j][k])) and path[j][k][-4:] == ".mp3":
+                                playlist.insert(END, path[j][k][:-4])
+                                list_loc.append(os.path.join(path[0], path[j][k]))
+                        k += 1
+                    j += 1
+        else:
+            if os.path.isfile(USBlist.focus()) and USBlist.focus()[-4:] == ".mp3":
+                shutil.copy(USBlist.focus(),os.path.join(path_main,"USB"))
+                playlist.insert(END, os.path.basename(USBlist.focus())[:-4])
+                list_loc.append(os.path.join(os.path.join(path_main,"USB"),os.path.basename(USBlist.focus())))
+            elif os.path.isdir(USBlist.focus()):
+                # for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
+                for path in os.walk(USBlist.focus()):
+                    j = 1
+                    # for Schleife zum Auslesen von unter Pfaden und Dateien
+                    for j in range(1, 3):
+                        # for Schleife zum Auslesen der eigentlichen Items
+                        k = 0
+                        for k in range(0,len(path[j])):
+                            if os.path.isfile(os.path.join(path[0], path[j][k])) and path[j][k][-4:] == ".mp3":
+                                playlist.insert(END, path[j][k][:-4])
+                                list_loc.append(os.path.join(path[0], path[j][k]))
+                        k += 1
+                    j += 1
     elif search_mode:
         idxs = searchlist.curselection()
         idx = int(idxs[0])
@@ -245,7 +296,10 @@ def nexttrack():
     global currenttrack_id
     global playlist_changed
     global currenttrack_fullname
-    currenttrack_id = currenttrack_id + 1
+    if currenttrack_id == len(list_loc)-1:
+        currenttrack_id = 0
+    else:
+        currenttrack_id = currenttrack_id + 1
     player.next()
     playlist.selection_clear(0, 'end')
     playlist.selection_set(currenttrack_id)
@@ -260,7 +314,10 @@ def nexttrack():
 def prevtrack():
     global currenttrack_id
     global currenttrack_fullname
-    currenttrack_id = currenttrack_id - 1
+    if currenttrack_id == 0:
+        currenttrack_id = len(list_loc)-1
+    else:
+        currenttrack_id = currenttrack_id - 1
     player.delete()
     playlist.selection_clear(0, 'end')
     playlist.selection_set(currenttrack_id)
@@ -283,10 +340,10 @@ def voldown():
 #Funktion zum Durchsuchen der Dateien
 def start_search(event):
     global manager_mode
-    global path
+    global path_main
     global path_usb
     if manager_mode == 0:
-        verz = path
+        verz = path_main
     else:
         verz = path_usb
     search_loc.clear()
@@ -326,6 +383,7 @@ def switchToUSB():                   #Zu USBlist
     searchbox.grid_forget()
     searchbutton.grid_forget()
     searchlistbutton.grid_forget()
+    hide_confirm()
     delete_list_button.state(['disabled'])
     create_folder_button.state(['disabled'])
     create_pllst_button.state(['disabled'])
@@ -400,6 +458,7 @@ def switchToDatMan():                   #Von zu Dateimanager 0
     searchbox.grid_forget()
     searchbutton.grid_forget()
     searchlistbutton.grid_forget()
+    hide_confirm()
     delete_list_button.state(['disabled'])
     create_folder_button.state(['disabled'])
     create_pllst_button.state(['disabled'])
@@ -411,6 +470,7 @@ def switchToDatMan():                   #Von zu Dateimanager 0
 
 def switchOptions():
     global options_show
+    message_string.set(str(getFreeSpace(path_main)[0]) + " GB " + str(getFreeSpace(path_main)[1]) + " MB frei")
     if options_show == False:
         optioncanvas.grid_propagate(False)
         optioncanvas.grid(column=1, row=1, columnspan=2, sticky=(N, E))
@@ -618,7 +678,10 @@ def update_clock():                                     #Funktion fuer regelmaes
     global currenttrack_id
     global playlist_changed
     if probar["maximum"] != player.source.duration:        #If Routine, falls der Track sich geaendert hat
-        currenttrack_id = currenttrack_id + 1              #ohne Eingreifen (automatischer next Track)
+        if currenttrack_id == len(list_loc)-1:
+            currenttrack_id = 0                            #ohne Eingreifen (automatischer next Track)
+        else:
+            currenttrack_id = currenttrack_id + 1
         player.delete()
         build_queue()
         player.play()
@@ -693,14 +756,14 @@ def create_List():                                  #Es werden keine Ordner ohne
         scanPath(path_pl, pl_ls_list)
 
 def show_confirm():
-    sicher_txt.grid(column=4, row=1, sticky=(N), padx=5, pady=5)
-    confirm_txt.grid(column=4, row=3, sticky=(N), padx=5)
-    confirm_button.grid(column=4, row=4, sticky=(N))
-    decline_txt.grid(column=4, row=5, sticky=(N), padx=5)
-    decline_button.grid(column=4, row=6, sticky=(N))
+    message_string.set("Sicher?")
+    confirm_txt.grid(column=3, row=3, sticky=(N), padx=5)
+    confirm_button.grid(column=3, row=4, sticky=(N))
+    decline_txt.grid(column=3, row=5, sticky=(N), padx=5)
+    decline_button.grid(column=3, row=6, sticky=(N))
     
 def hide_confirm():
-    sicher_txt.grid_forget()
+    message_string.set(str(getFreeSpace(path_main)[0]) + " GB " + str(getFreeSpace(path_main)[1]) + " MB frei")
     confirm_txt.grid_forget()
     confirm_button.grid_forget()
     decline_txt.grid_forget()
@@ -716,6 +779,18 @@ def delPlaylist():
     scanPath(path_pl, pl_ls_list)
     hide_confirm()
 
+def mastervol_down():
+    if sys.platform == "linux" and master_volume > 0:
+        os.system("amixer -q sset 'Master' 5%-")
+        master_volume = master_volume - 5
+        message_string.set(str(master_volume))
+        
+def mastervol_up():
+    if sys.platform == "linux" and master_volume < 100:
+        os.system("amixer -q sset 'Master' 5%+")
+        master_volume = master_volume + 5
+        message_string.set(str(master_volume))
+        
 #############################################################################
 #{C10} Play Funktionen
 #############################################################################
@@ -861,7 +936,7 @@ searchbox.bind('<FocusOut>', hide_keyboard)
 searchbutton = ttk.Button(manager, width=2, image=searchimg, command=lambda: start_search('<Return>'))
 
 #Option Window
-optioncanvas = Canvas(mainframe, height = 150, width = 300, bd=5, relief = RAISED, highlightthickness=0)
+optioncanvas = Canvas(mainframe, height = 170, width = 375, bd=5, relief = RAISED, highlightthickness=0)
 optioncanvas.grid_propagate(False)
 optioncanvas.create_line((75, 0, 75, 160))
 optioncanvas.create_line((158, 0, 158, 160))
@@ -883,7 +958,7 @@ copy_txt = ttk.Label(optioncanvas, text=("USB Copy"))
 copy_txt.grid(column=1, row=5, sticky=(N))
 
 copy_box = ttk.Checkbutton(optioncanvas, variable=copy_var, onvalue=True, offvalue=False)
-copy_box.grid(column=1, row=6, sticky=(N))
+copy_box.grid(column=1, row=6, sticky=(N), pady=3)
 
 create_folder_txt = ttk.Label(optioncanvas, text=("Create Folder"))
 create_folder_txt.grid(column=2, row=1, sticky=(N), padx = 3, pady = 5)
@@ -910,19 +985,17 @@ create_entry.bind('<FocusIn>', show_keyboard)
 create_entry.bind('<FocusOut>', hide_keyboard)
 
 exit_txt = ttk.Label(optioncanvas, text=("Exit"))
-exit_txt.grid(column=3, row=1, sticky=(N), padx = 3, pady = 5)
+exit_txt.grid(column=7, row=1, sticky=(N), padx = 3, pady = 5)
 
 exitbutton = ttk.Button(optioncanvas, width=2, image=exitimg, command=exit_player)
-exitbutton.grid(column=3, row=2, sticky=(N))
+exitbutton.grid(column=7, row=2, sticky=(N))
 
 delete_list_txt = ttk.Label(optioncanvas, text=("Delete"))
-delete_list_txt.grid(column=3, row=3, sticky=(N), padx = 5)
+delete_list_txt.grid(column=3, row=1, sticky=(N), padx = 5, pady = 5)
 
 delete_list_button = ttk.Button(optioncanvas, width=2, image=entimg, command=show_confirm)
 delete_list_button.state(['disabled'])
-delete_list_button.grid(column=3, row=4, sticky=(N))
-
-sicher_txt = ttk.Label(optioncanvas, text=("Sicher?"))
+delete_list_button.grid(column=3, row=2, sticky=(N))
 
 confirm_txt = ttk.Label(optioncanvas, text=("Ja"))
 
@@ -931,6 +1004,29 @@ confirm_button = ttk.Button(optioncanvas, width=2, image=confirmimg, command=del
 decline_txt = ttk.Label(optioncanvas, text=("Nein"))
 
 decline_button = ttk.Button(optioncanvas, width=2, image=entimg, command=hide_confirm)
+
+mastervol_txt = ttk.Label(optioncanvas, text=("Master Volume"))
+mastervol_txt.grid(column=4, row=1, columnspan=2, sticky=(N), pady = 5)
+
+mastervol_down_button = ttk.Button(optioncanvas, width=2, image=minusimg, command=mastervol_down)
+mastervol_down_button.grid(column=4, row=2, sticky=(N))
+
+mastervol_up_button = ttk.Button(optioncanvas, width=2, image=plusimg, command=mastervol_up)
+mastervol_up_button.grid(column=5, row=2, sticky=(N))
+
+placeholder_txt1 = ttk.Label(optioncanvas, text="")
+placeholder_txt1.grid(column=4, row=3, sticky=(N), padx = 20)
+
+placeholder_txt2 = ttk.Label(optioncanvas, text=" ")
+placeholder_txt2.grid(column=5, row=3, sticky=(N), padx = 20)
+
+placeholder_txt3 = ttk.Label(optioncanvas, text=" ")
+placeholder_txt3.grid(column=6, row=3, sticky=(N), padx = 20)
+
+message_txt = ttk.Entry(optioncanvas, width=50,  textvariable=message_string)
+message_txt.grid(column=1, row=7, columnspan = 7, rowspan=2, sticky=(S, E, W),padx =5, pady=5)
+message_txt.state(['disabled'])
+message_string.set("Dies ist ein Test abcdefghijklmnopqrstuvwxyz1234567890")
 
 #Datei Manager Window
 datmanbutton = ttk.Button(manager, width=2, image=datmanimg, command=switchToDatMan)
@@ -1159,23 +1255,12 @@ def scanPath(verz, list):
             j += 1
         i += 1
 
-scanPath(path, manlist)         #mp3liste wird erstellt
+scanPath(path_main, manlist)         #mp3liste wird erstellt
 scanPath(path_pl, pl_ls_list)   #Playlist Liste wird erstellt
 scanPath(path_usb, USBlist)     #USBliste wird erstellt
 
 #for child in mainframe.winfo_children(): child.grid_configure(padx=2, pady=2)
 optioncanvas.grid_forget()
 keyboardcanvas.grid_forget()
-
-# def getFreeSpace( Laufwerk ):
-    # txt = os.popen( 'dir %s\\' % Laufwerk ).readlines()
-    # txt = txt[-1]
-    # txt = txt.split(",")[1]
-    # txt = txt.split("Bytes")[0]
-    # txt = "".join( txt.split(".") )
-    # return int( txt )
- 
-# Bytes = getFreeSpace( "e:" )
-# print (Bytes / 1024 / 1024, "MB frei")
 
 root.mainloop()
