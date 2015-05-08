@@ -37,16 +37,19 @@ import threading
 #############################################################################
 #{C01} Verzeichnis der zu scannenden Musik und Name der Standardplaylist im Layout.py Ordner
 #############################################################################
+
 #path Pi:
-# path_main = "/media/pi/USBSTICK/MarSve-Player"
+# path_main = "/home/pi/Documents/MarSve-Player"
 # path_usb = "/media/pi/USBSTICK/MP3-Player"
 # akt_pl = "standard_playlist.lst"
-# path_pl = "/media/pi/USBSTICK/MarSve-Player/playlists"
+# path_pl = "/home/pi/Documents/MarSve-Player/playlists"
+
 #path Martin:
 #path_main = "/Users/Luftikus/Desktop/mp3"
 #path_usb =
 #akt_pl = 
 #path_pl = 
+
 #path Sven:
 path_main = "F:\Downloads\MarSve-Player\mp3"
 path_usb = "K:\Musik\MP3-Player"
@@ -128,16 +131,21 @@ confirmimg = PhotoImage(file="confirm.gif")
 
 #Funktion zum pruefen des verfuegbaren Speichers in MB
 def getFreeSpace( Laufwerk ):
-    MB_txt = os.popen( 'dir %s\\' % Laufwerk ).readlines()
-    MB_txt = MB_txt[-1]
-    MB_txt = MB_txt.split(",")[1]
-    MB_txt = MB_txt.split("Bytes")[0]
-    MB_txt = "".join( MB_txt.split(".") )
+    if sys.platform == "win32":
+        MB_txt = os.popen( 'dir %s\\' % Laufwerk ).readlines()
+        MB_txt = MB_txt[-1]
+        MB_txt = MB_txt.split(",")[1]
+        MB_txt = MB_txt.split("Bytes")[0]
+        MB_txt = "".join( MB_txt.split(".") )
+    elif sys.platform == "linux":
+        MB_txt = os.statvfs(Laufwerk)
+        MB_txt = MB_txt.f_bfree*MB_txt.f_bsize
     MB_txt = int(MB_txt) / 1024 / 1024
     GB_txt = int(MB_txt / 1024)
     MB_txt = int(MB_txt - GB_txt * 1024)
     txt = [GB_txt , MB_txt]
     return txt
+    
 
 #Funktion zum aufbauen der queue aus list_loc
 def build_queue():
@@ -147,6 +155,8 @@ def build_queue():
         shuffle_id = currenttrack_id
         while shuffle_id == currenttrack_id:
             currenttrack_id = random.randrange(0, len(list_loc), 1)
+        playlist.selection_clear(0, 'end')
+        playlist.selection_set(currenttrack_id)
     if currenttrack_id == len(list_loc)-1:
         music = pyglet.media.load(list_loc[currenttrack_id])
         player.queue(music)
@@ -157,6 +167,7 @@ def build_queue():
         player.queue(music)
         music = pyglet.media.load(list_loc[currenttrack_id+1])
         player.queue(music)
+        
 
 
 #Funktion zum Sichern der aktuellen Playlist
@@ -300,13 +311,11 @@ def nexttrack():
         currenttrack_id = 0
     else:
         currenttrack_id = currenttrack_id + 1
-    player.next()
     playlist.selection_clear(0, 'end')
     playlist.selection_set(currenttrack_id)
-    if playlist_changed:
-        player.delete()
-        build_queue()
-        playlist_changed = False
+    player.delete()
+    build_queue()
+    playlist_changed = False
     currenttrack_fullname = playlist.get(currenttrack_id)
     standard_play()
 
@@ -318,10 +327,11 @@ def prevtrack():
         currenttrack_id = len(list_loc)-1
     else:
         currenttrack_id = currenttrack_id - 1
-    player.delete()
     playlist.selection_clear(0, 'end')
     playlist.selection_set(currenttrack_id)
+    player.delete()
     build_queue()
+    playlist_changed = False
     currenttrack_fullname = playlist.get(currenttrack_id)
     standard_play()
 
@@ -677,45 +687,48 @@ def update_clock():                                     #Funktion fuer regelmaes
     global currenttrack_fullname
     global currenttrack_id
     global playlist_changed
-    if probar["maximum"] != player.source.duration:        #If Routine, falls der Track sich geaendert hat
-        if currenttrack_id == len(list_loc)-1:
-            currenttrack_id = 0                            #ohne Eingreifen (automatischer next Track)
-        else:
-            currenttrack_id = currenttrack_id + 1
-        player.delete()
-        build_queue()
-        player.play()
-        playlist_changed = False
-        currenttrack_fullname = currenttrack_fullname = playlist.get(currenttrack_id)
-        probar["maximum"] = player.source.duration         #Das Maximum der Progressbar wird gesetzt
-        overlength=0
-            
-    if player.playing:
-        update_runs = True
-        threading.Timer(0.25, update_clock).start()     #Intervall in dem Updates geschehen
-        
-        tracklength = math.ceil(player.source.duration) #Berechnung der Tracklenge in min und sec
-        tracksec = math.fmod (tracklength, 60)
-        trackmin = (tracklength-tracksec)/60
-            
-        playlength = math.ceil(player.time)             #Berechnung der Spiellaenge in min und sec
-        playsec = math.fmod (playlength, 60)
-        playmin = (playlength-playsec)/60
-        currenttrack_length.set('%i:%.2i/%i:%.2i' %(playmin, playsec, trackmin, tracksec))
-        probar["value"] = player.time                      #Der Fortschritt der Progressbar wird gesetzt
-        if len(currenttrack_fullname) > 36:
-            if not left_right:
-                currenttrack_name.set(currenttrack_fullname[overlength:(36+overlength)])
-                overlength += 1
+    if player.source is not None:
+        if probar["maximum"] != player.source.duration:        #If Routine, falls der Track sich geaendert hat
+            if currenttrack_id == len(list_loc)-1:
+                currenttrack_id = 0                            #ohne Eingreifen (automatischer next Track)
             else:
-                currenttrack_name.set(currenttrack_fullname[overlength:(36+overlength)])
-                overlength -= 1
-            if overlength == 0:
-                left_right = False
-            elif overlength == len(playlist.get(currenttrack_id))-36:
-                left_right = True
-        else:
-            currenttrack_name.set(currenttrack_fullname)
+                currenttrack_id = currenttrack_id + 1
+            player.delete()
+            build_queue()
+            player.play()
+            playlist_changed = False
+            currenttrack_fullname = currenttrack_fullname = playlist.get(currenttrack_id)
+            probar["maximum"] = player.source.duration         #Das Maximum der Progressbar wird gesetzt
+            overlength=0
+                
+        if player.playing:
+            update_runs = True
+            threading.Timer(0.25, update_clock).start()     #Intervall in dem Updates geschehen
+            
+            tracklength = math.ceil(player.source.duration) #Berechnung der Tracklenge in min und sec
+            tracksec = math.fmod (tracklength, 60)
+            trackmin = (tracklength-tracksec)/60
+                
+            playlength = math.ceil(player.time)             #Berechnung der Spiellaenge in min und sec
+            playsec = math.fmod (playlength, 60)
+            playmin = (playlength-playsec)/60
+            currenttrack_length.set('%i:%.2i/%i:%.2i' %(playmin, playsec, trackmin, tracksec))
+            probar["value"] = player.time                      #Der Fortschritt der Progressbar wird gesetzt
+            if len(currenttrack_fullname) > 36:
+                if not left_right:
+                    currenttrack_name.set(currenttrack_fullname[overlength:(36+overlength)])
+                    overlength += 1
+                else:
+                    currenttrack_name.set(currenttrack_fullname[overlength:(36+overlength)])
+                    overlength -= 1
+                if overlength == 0:
+                    left_right = False
+                elif overlength == len(playlist.get(currenttrack_id))-36:
+                    left_right = True
+            else:
+                currenttrack_name.set(currenttrack_fullname)
+    elif update_runs == True:
+        threading.Timer(0.25, update_clock).start()
 
 #############################################################################
 #{C09} Optionen Funktionen
@@ -728,8 +741,10 @@ def refreshUSB():
     
 #Exit Funktion
 def exit_player():
+    global update_runs
     player.delete()
-    exit()
+    update_runs = False
+    threading.Timer(0.3, exit()).start()
 
 #Create Folder Funktion
 def create_Folder():
@@ -780,16 +795,20 @@ def delPlaylist():
     hide_confirm()
 
 def mastervol_down():
+    global master_volume
     if sys.platform == "linux" and master_volume > 0:
-        os.system("amixer -q sset 'Master' 5%-")
         master_volume = master_volume - 5
-        message_string.set(str(master_volume))
+        set_vol = "amixer -q sset 'Master' " + str(master_volume) + "%"
+        os.system(set_vol)
+        message_string.set(str(master_volume) + "% Master Volume")
         
 def mastervol_up():
+    global master_volume
     if sys.platform == "linux" and master_volume < 100:
-        os.system("amixer -q sset 'Master' 5%+")
         master_volume = master_volume + 5
-        message_string.set(str(master_volume))
+        set_vol = "amixer -q sset 'Master' " + str(master_volume) + "%"
+        os.system(set_vol)
+        message_string.set(str(master_volume) + "% Master Volume")
         
 #############################################################################
 #{C10} Play Funktionen
