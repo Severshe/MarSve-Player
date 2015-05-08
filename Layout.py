@@ -81,24 +81,31 @@ currenttrack_name = StringVar()     #Wie ist der Name des Tracks
 currenttrack_fullname = None
 currentplaylist = StringVar()       #Wie ist der Name der aktuellen Playlist
 currentplaylist.set(os.path.basename(akt_pl)[:-4])  #Setzt die Playlist auf den Standard
-playlist_changed = False            #Globalvar die bei Hinzufuegen und Loeschen von Songs auf True gesetzt wird
-curIndex = 0
 search_string = StringVar()
 search_loc =[]
-manager_mode = 0                    #Globalvar in welchem Mode das linke Fenster ist (DatMan = 0, USB = 1, Playlst = 2)
-search_mode = False                 #Globalvar ob im Suchmodes
-overlength = 0                      #Globalvar ob und wieviel currenttrack_name zu lang fuer die Anzeige ist
-left_right = False                  #Globalvar ob der Name nach links oder rechts laeuft
-update_runs = False                 #Globalvar ob die Updatefunktion laeuft
-options_show = False                #Globalvar ob die Optionen gezeigt werden
-shuffle_var = BooleanVar()
+search_mode = BooleanVar()          #Bool ob im Suchmodes
+search_mode.set(False)
+left_right = BooleanVar()           #Bool ob der Name nach links oder rechts laeuft
+left_right.set(False)
+update_runs = BooleanVar()          #Bool ob die Updatefunktion laeuft
+update_runs.set(False)
+options_show = BooleanVar()         #Bool ob die Optionen gezeigt werden
+options_show.set(False)
+shuffle_var = BooleanVar()          #Bool ob Shuffle an ist
 shuffle_var.set(False)
-copy_var = BooleanVar()
+copy_var = BooleanVar()             #Bool ob von USB kopiert wird an ist
 copy_var.set(False)
-create_string = StringVar()
-message_string = StringVar()
-master_volume = 50
+create_string = StringVar()         #String des zu erstellendem Ordner oder Datei
+message_string = StringVar()        #String der Nachricht im Optionsmenu
+warning_var = BooleanVar()          #Bool ob das Warncanvas angezeigt wird
+warning_var.set(False)
+warning_string = StringVar()        #String der Warnung
 
+curIndex = 0                        #Globalvar fuer die Verschiebeoption
+manager_mode = 0                    #Globalvar in welchem Mode das linke Fenster ist (DatMan = 0, USB = 1, Playlst = 2)
+overlength = 0                      #Globalvar ob und wieviel currenttrack_name zu lang fuer die Anzeige ist
+
+master_volume = 50
 player.volume = 0.5
 
 #############################################################################
@@ -129,7 +136,7 @@ confirmimg = PhotoImage(file="confirm.gif")
 #{C04} Playlist Funktionen
 #############################################################################
 
-#Funktion zum pruefen des verfuegbaren Speichers in MB
+#Funktion zum Pruefen des verfuegbaren Speichers in GB und MB
 def getFreeSpace( Laufwerk ):
     if sys.platform == "win32":
         MB_txt = os.popen( 'dir %s\\' % Laufwerk ).readlines()
@@ -184,10 +191,9 @@ def write_akt_pl():
 #Funktion zum laden von Playlists
 def playlist_load(event):
     global akt_pl
-    global playlist_changed
-    playlist.delete(0, 'end')
-    list_loc.clear()
     if os.path.isfile(pl_ls_list.focus()):
+        playlist.delete(0, 'end')
+        list_loc.clear()
         akt_pl = pl_ls_list.focus()
         currentplaylist.set(os.path.basename(akt_pl)[:-4])
         with open(pl_ls_list.focus(), 'r') as plfile:   #standard Playlist wird geladen
@@ -200,16 +206,14 @@ def playlist_load(event):
                 playlist.insert(END, os.path.basename(standard_playlist[i])[:-4])
                 list_loc.append(standard_playlist[i])
             plfile.close()
-    playlist_changed = True
 
 #Funktion zum Hinzufuegen von Songs zur Playlist
 def addToList():
     global manager_mode
-    global playlist_changed
     global search_mode
     global copy_var
     global path_main
-    if manager_mode == 0 and not search_mode:
+    if manager_mode == 0 and not search_mode.get():
         if os.path.isfile(manlist.focus()) and manlist.focus()[-4:] == ".mp3":
             playlist.insert(END, os.path.basename(manlist.focus())[:-4])
             list_loc.append(manlist.focus())
@@ -227,26 +231,13 @@ def addToList():
                             list_loc.append(os.path.join(path[0], path[j][k]))
                     k += 1
                 j += 1
-    elif manager_mode == 1 and not search_mode:
-        if copy_var == False:
-            if os.path.isfile(USBlist.focus()) and USBlist.focus()[-4:] == ".mp3":
-                playlist.insert(END, os.path.basename(USBlist.focus())[:-4])
-                list_loc.append(USBlist.focus())
-            elif os.path.isdir(USBlist.focus()):
-                #for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
-                for path in os.walk(USBlist.focus()):
-                    j = 1
-                    #for Schleife zum Auslesen von unter Pfaden und Dateien
-                    for j in range(1, 3):
-                        #for Schleife zum Auslesen der eigentlichen Items
-                        k = 0
-                        for k in range(0,len(path[j])):
-                            if os.path.isfile(os.path.join(path[0], path[j][k])) and path[j][k][-4:] == ".mp3":
-                                playlist.insert(END, path[j][k][:-4])
-                                list_loc.append(os.path.join(path[0], path[j][k]))
-                        k += 1
-                    j += 1
-        else:
+    elif manager_mode == 1 and not search_mode.get():
+        free = getFreeSpace(path_main)[0]
+        if copy_var.get() == True and free < 1:
+            warning_string.set("Zu wenig freier Speicher zum Kopieren auf SD-Karte")
+            warning_var.set(True)
+            show_warning()
+        if copy_var.get() == True and free >= 1:
             if os.path.isfile(USBlist.focus()) and USBlist.focus()[-4:] == ".mp3":
                 shutil.copy(USBlist.focus(),os.path.join(path_main,"USB"))
                 playlist.insert(END, os.path.basename(USBlist.focus())[:-4])
@@ -265,14 +256,32 @@ def addToList():
                                 list_loc.append(os.path.join(path[0], path[j][k]))
                         k += 1
                     j += 1
-    elif search_mode:
+        else:
+            if os.path.isfile(USBlist.focus()) and USBlist.focus()[-4:] == ".mp3":
+                playlist.insert(END, os.path.basename(USBlist.focus())[:-4])
+                list_loc.append(USBlist.focus())
+            elif os.path.isdir(USBlist.focus()):
+                #for Schleife zum erstellen der Dateiliste "path" mit Listenstruktur (aktueller Pfad, unter Pfade, Dateien)
+                for path in os.walk(USBlist.focus()):
+                    j = 1
+                    #for Schleife zum Auslesen von unter Pfaden und Dateien
+                    for j in range(1, 3):
+                        #for Schleife zum Auslesen der eigentlichen Items
+                        k = 0
+                        for k in range(0,len(path[j])):
+                            if os.path.isfile(os.path.join(path[0], path[j][k])) and path[j][k][-4:] == ".mp3":
+                                playlist.insert(END, path[j][k][:-4])
+                                list_loc.append(os.path.join(path[0], path[j][k]))
+                        k += 1
+                    j += 1
+
+    elif search_mode.get():
         idxs = searchlist.curselection()
         idx = int(idxs[0])
         playlist.insert(END, os.path.basename(search_loc[idx])[:-4])
         list_loc.append(search_loc[idx])
     elif manager_mode == 2:
         playlist_load('<Button-1>')
-    playlist_changed = True
     write_akt_pl()
     
 #Funktion zum Loeschen von Songs von der Playlist
@@ -280,7 +289,6 @@ def delFromList():
     idxs = playlist.curselection()                      #Welcher Eintrag ist angewaehlt
     idx = int(idxs[0])                                  #Nummer des Eintrags
     loc_time = player.time                              #Momentane Abspielzeit wird gespeichert
-    global playlist_changed
     global currenttrack_id
     if currenttrack_id > idx:                           #Falls der zu loeschende Eintrag vor dem Spielenden ist
         currenttrack_id = currenttrack_id - 1           #Muss die currenttrack_id verringert werden
@@ -288,11 +296,12 @@ def delFromList():
         list_loc.pop(idx)
         write_akt_pl()
     elif currenttrack_id == idx:
-        print("Do not delete current playing track")
+        warning_string.set("Aktueller Track kann nicht geloescht werden")
+        warning_var.set(True)
+        show_warning()
     else:
         playlist.delete(idx)
         list_loc.pop(idx)
-        playlist_changed = True
         write_akt_pl()
     if idx == len(list_loc):
         playlist.selection_set(idx-1)
@@ -305,7 +314,6 @@ def delFromList():
 #Funktion fuer den naechsten Track
 def nexttrack():
     global currenttrack_id
-    global playlist_changed
     global currenttrack_fullname
     if currenttrack_id == len(list_loc)-1:
         currenttrack_id = 0
@@ -315,7 +323,6 @@ def nexttrack():
     playlist.selection_set(currenttrack_id)
     player.delete()
     build_queue()
-    playlist_changed = False
     currenttrack_fullname = playlist.get(currenttrack_id)
     standard_play()
 
@@ -331,7 +338,6 @@ def prevtrack():
     playlist.selection_set(currenttrack_id)
     player.delete()
     build_queue()
-    playlist_changed = False
     currenttrack_fullname = playlist.get(currenttrack_id)
     standard_play()
 
@@ -373,6 +379,14 @@ def start_search(event):
                 k += 1
             j += 1
 
+def show_warning():
+    if warning_var.get() == True:
+        warningcanvas.grid(column=1, row=1, columnspan=2, rowspan=2)
+        warning_var.set(False)
+        threading.Timer(2, show_warning).start()     #Zeitspanne in der die Warnung angezeigt wird
+    elif warning_var.get() == False:
+        warningcanvas.grid_forget()
+    
 #############################################################################
 #{C06} Wechselfunktionen der Linken Seite
 #############################################################################
@@ -381,7 +395,7 @@ def switchToUSB():                   #Zu USBlist
     global manager_mode
     global search_mode
     manager_mode = 1
-    search_mode = False
+    search_mode.set(False)
     USBbutton.grid_forget()
     pl_ls_list.grid_forget()
     pl_ls_listscroll.grid_forget()
@@ -402,12 +416,11 @@ def switchToUSB():                   #Zu USBlist
     datmanbutton.grid(column=1, row=1, sticky=(N))
     USBlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
     USBlistscroll.grid(column=3, row=2, sticky=(N, E, S))
-    #USBlist.delete(*USBlist.get_children())
     
 def switchTosearchlist():               #Zu Searchlist
     global manager_mode
     global search_mode
-    search_mode = True
+    search_mode.set(True)
     searchlistbutton.grid_forget()
     pl_ls_list.grid_forget()
     pl_ls_listscroll.grid_forget()
@@ -430,7 +443,7 @@ def switchToPlaylist():                 #Von Dateimanager 0 zu Playlists_lists
     global search_mode
     global manager_mode
     manager_mode = 2
-    search_mode = False
+    search_mode.set(False)
     playlistbutton.grid_forget()
     manlist.grid_forget()
     manlistscroll.grid_forget()
@@ -455,7 +468,7 @@ def switchToDatMan():                   #Von zu Dateimanager 0
     global manager_mode
     global search_mode
     manager_mode = 0
-    search_mode = False
+    search_mode.set(False)
     datmanbutton.grid_forget()
     USBbutton.grid_forget()
     USBlist.grid_forget()
@@ -481,13 +494,13 @@ def switchToDatMan():                   #Von zu Dateimanager 0
 def switchOptions():
     global options_show
     message_string.set(str(getFreeSpace(path_main)[0]) + " GB " + str(getFreeSpace(path_main)[1]) + " MB frei")
-    if options_show == False:
+    if not options_show.get():
         optioncanvas.grid_propagate(False)
         optioncanvas.grid(column=1, row=1, columnspan=2, sticky=(N, E))
-        options_show = True
-    elif options_show == True:
+        options_show.set(True)
+    elif options_show.get():
         optioncanvas.grid_forget()
-        options_show = False
+        options_show.set(False)
 
 #############################################################################
 #{C07} Keyboardfunktionen
@@ -500,181 +513,181 @@ def hide_keyboard(event):
     keyboardcanvas.grid_forget()
     
 def ins_q():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'q')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'q')
     
 def ins_w():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'w')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'w')
     
 def ins_e():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'e')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'e')
     
 def ins_r():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'r')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'r')
     
 def ins_t():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 't')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 't')
     
 def ins_z():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'z')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'z')
     
 def ins_u():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'u')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'u')
     
 def ins_i():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'i')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'i')
     
 def ins_o():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'o')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'o')
     
 def ins_p():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'p')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'p')
     
 def ins_bs():
-    if search_mode:
+    if search_mode.get():
         if searchbox.selection_present():
             searchbox.delete("sel.first", "sel.last")
         else:
             searchbox.delete(len(searchbox.get())-1)
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         if create_entry.selection_present():
             create_entry.delete("sel.first", "sel.last")
         else:
             create_entry.delete(len(create_entry.get())-1)
     
 def ins_a():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'a')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'a')
     
 def ins_s():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 's')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 's')
     
 def ins_d():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'd')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'd')
     
 def ins_f():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'f')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'f')
     
 def ins_g():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'g')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'g')
     
 def ins_h():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'h')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'h')
     
 def ins_j():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'j')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'j')
     
 def ins_k():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'k')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'k')
     
 def ins_l():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'l')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'l')
     
 def ins_ent():
-    if search_mode:
+    if search_mode.get():
         start_search('<Return>')
     
 def ins_y():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'y')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'y')
     
 def ins_x():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'x')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'x')
     
 def ins_c():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'c')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'c')
     
 def ins_v():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'v')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'v')
     
 def ins_b():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'b')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'b')
     
 def ins_n():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'n')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'n')
     
 def ins_m():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, 'm')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, 'm')
     
 def ins_spc():
-    if search_mode:
+    if search_mode.get():
         searchbox.insert(END, ' ')
-    if options_show and manager_mode == 2:
+    if options_show.get() and manager_mode == 2:
         create_entry.insert(END, ' ')
 
 #############################################################################
@@ -686,7 +699,6 @@ def update_clock():                                     #Funktion fuer regelmaes
     global update_runs
     global currenttrack_fullname
     global currenttrack_id
-    global playlist_changed
     if player.source is not None:
         if probar["maximum"] != player.source.duration:        #If Routine, falls der Track sich geaendert hat
             if currenttrack_id == len(list_loc)-1:
@@ -696,13 +708,12 @@ def update_clock():                                     #Funktion fuer regelmaes
             player.delete()
             build_queue()
             player.play()
-            playlist_changed = False
             currenttrack_fullname = currenttrack_fullname = playlist.get(currenttrack_id)
             probar["maximum"] = player.source.duration         #Das Maximum der Progressbar wird gesetzt
             overlength=0
                 
         if player.playing:
-            update_runs = True
+            update_runs.set(True)
             threading.Timer(0.25, update_clock).start()     #Intervall in dem Updates geschehen
             
             tracklength = math.ceil(player.source.duration) #Berechnung der Tracklenge in min und sec
@@ -715,19 +726,19 @@ def update_clock():                                     #Funktion fuer regelmaes
             currenttrack_length.set('%i:%.2i/%i:%.2i' %(playmin, playsec, trackmin, tracksec))
             probar["value"] = player.time                      #Der Fortschritt der Progressbar wird gesetzt
             if len(currenttrack_fullname) > 36:
-                if not left_right:
+                if not left_right.get():
                     currenttrack_name.set(currenttrack_fullname[overlength:(36+overlength)])
                     overlength += 1
                 else:
                     currenttrack_name.set(currenttrack_fullname[overlength:(36+overlength)])
                     overlength -= 1
                 if overlength == 0:
-                    left_right = False
+                    left_right.set(False)
                 elif overlength == len(playlist.get(currenttrack_id))-36:
-                    left_right = True
+                    left_right.set(True)
             else:
                 currenttrack_name.set(currenttrack_fullname)
-    elif update_runs == True:
+    elif update_runs.get():
         threading.Timer(0.25, update_clock).start()
 
 #############################################################################
@@ -743,7 +754,7 @@ def refreshUSB():
 def exit_player():
     global update_runs
     player.delete()
-    update_runs = False
+    update_runs.set(False)
     threading.Timer(0.3, exit()).start()
 
 #Create Folder Funktion
@@ -818,12 +829,12 @@ def standard_play():
     global update_runs
     global left_right
     global overlength
-    left_right = False
+    left_right.set(False)
     overlength = 0
     playbutton["image"]=pauseimg
     player.play()
     probar["maximum"] = player.source.duration
-    if not update_runs:
+    if not update_runs.get():
         update_clock()
 
 #Play/Pause
@@ -834,7 +845,7 @@ def play_pause():
     if player.playing:
         player.pause()
         playbutton["image"]=playimg
-        update_runs = False
+        update_runs.set(False)
     else:
         if not player.source:
             build_queue()
@@ -897,7 +908,6 @@ def setCurrent(event):
 
 def shiftSelection(event):
     global curIndex
-    global playlist_changed
     i = playlist.nearest(event.y)
     if i < curIndex:
         x = playlist.get(i)
@@ -915,7 +925,6 @@ def shiftSelection(event):
         playlist.insert(i-1, x)
         list_loc.insert(i-1, x_list)
         curIndex = i
-    playlist_changed = True
     write_akt_pl()
 
 #############################################################################
@@ -933,6 +942,12 @@ manager.grid(column=1, row=1, sticky=(N, W, S))
 
 playframe = ttk.Frame(mainframe, padding="3 3 3 3")
 playframe.grid(column=2, row=1, sticky=(N, E, S))
+
+#Warning Window
+warningcanvas = Canvas(mainframe, height = 25, width = 200, bd=5, relief=RIDGE)
+
+warning_txt = ttk.Label(warningcanvas, textvariable=warning_string)
+warning_txt.grid(column=1, row=1, sticky=(N), padx=10, pady = 10)
 
 #Search Window
 searchlistbutton = ttk.Button(manager, width=2, image=searchimg, command=switchTosearchlist)
@@ -1138,18 +1153,6 @@ playlistscroll = ttk.Scrollbar( playframe, orient=VERTICAL, command=playlist.yvi
 playlistscroll.grid(column=7, row=4, sticky=(N, E, S))
 playlist.configure(yscrollcommand=playlistscroll.set)
 
-#Standard Playlist wird aus standard_playlist.lst geladen
-with open(akt_pl, 'r') as plfile: #standard Playlist wird in plfile geladen
-    standard_playlist = plfile.readlines()
-for i in range (0, len(standard_playlist)):
-    if i < len(standard_playlist)-1:
-        playlist.insert(END, os.path.basename(standard_playlist[i])[:-5])
-        list_loc.append(standard_playlist[i][:-1])
-    elif i == len(standard_playlist)-1:
-        playlist.insert(END, os.path.basename(standard_playlist[i])[:-4])
-        list_loc.append(standard_playlist[i])
-plfile.close()
-
 #############################################################################
 #{C13} Display Keyboard
 #############################################################################
@@ -1273,8 +1276,22 @@ def scanPath(verz, list):
                 k += 1
             j += 1
         i += 1
+        
 
-scanPath(path_main, manlist)         #mp3liste wird erstellt
+#Standard Playlist wird aus standard_playlist.lst geladen
+with open(akt_pl, 'r') as plfile: #standard Playlist wird in plfile geladen
+    standard_playlist = plfile.readlines()
+for i in range (0, len(standard_playlist)):
+    if i < len(standard_playlist)-1:
+        playlist.insert(END, os.path.basename(standard_playlist[i])[:-5])
+        list_loc.append(standard_playlist[i][:-1])
+    elif i == len(standard_playlist)-1:
+        playlist.insert(END, os.path.basename(standard_playlist[i])[:-4])
+        list_loc.append(standard_playlist[i])
+plfile.close()
+
+#Dateibaeume werden erstellt
+scanPath(path_main, manlist)    #mp3liste wird erstellt
 scanPath(path_pl, pl_ls_list)   #Playlist Liste wird erstellt
 scanPath(path_usb, USBlist)     #USBliste wird erstellt
 
