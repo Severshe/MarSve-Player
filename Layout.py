@@ -147,6 +147,8 @@ def getFreeSpace( Laufwerk ):
     elif sys.platform == "linux":
         MB_txt = os.statvfs(Laufwerk)
         MB_txt = MB_txt.f_bfree*MB_txt.f_bsize
+    else:
+        MB_txt = 2*1024*1024
     MB_txt = int(MB_txt) / 1024 / 1024
     GB_txt = int(MB_txt / 1024)
     MB_txt = int(MB_txt - GB_txt * 1024)
