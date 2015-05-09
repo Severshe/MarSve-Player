@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 #############################################################################
+# Anmerkungen
+#############################################################################
+
+# Das aktuelle Layout sieht schlecht auf Windows aus, ist aber fuer
+# die Raspberry Pi optimiert.
+
+
+#############################################################################
 #   {Table of Conent}
 #   {C01}   Verzeichnisse
 #   {C02}   Definitionen und Globalvars
@@ -68,9 +76,6 @@ root.maxsize(480, 320)
 
 player = pyglet.media.Player()
 
-if sys.platform == "linux":
-    os.system("amixer -q sset 'Master' 50%")
-
 #############################################################################
 #{C02} Definitionen und Globalvars
 #############################################################################
@@ -105,7 +110,7 @@ curIndex = 0                        #Globalvar fuer die Verschiebeoption
 manager_mode = 0                    #Globalvar in welchem Mode das linke Fenster ist (DatMan = 0, USB = 1, Playlst = 2)
 overlength = 0                      #Globalvar ob und wieviel currenttrack_name zu lang fuer die Anzeige ist
 
-master_volume = 50
+master_volume = 20
 player.volume = 0.5
 
 #############################################################################
@@ -242,6 +247,7 @@ def addToList():
         if copy_var.get() == True and free >= 1:
             if os.path.isfile(USBlist.focus()) and USBlist.focus()[-4:] == ".mp3":
                 shutil.copy(USBlist.focus(),os.path.join(path_main,"USB"))
+                manlist.insert(os.path.join(path_main,"USB"), 'end', os.path.join(os.path.join(path_main,"USB"), os.path.basename(USBlist.focus())), text=os.path.basename(USBlist.focus())[:-4], tags='Play')
                 playlist.insert(END, os.path.basename(USBlist.focus())[:-4])
                 list_loc.append(os.path.join(os.path.join(path_main,"USB"),os.path.basename(USBlist.focus())))
             elif os.path.isdir(USBlist.focus()):
@@ -317,14 +323,14 @@ def delFromList():
 def nexttrack():
     global currenttrack_id
     global currenttrack_fullname
-    if currenttrack_id == len(list_loc)-1:
+    if currenttrack_id == len(list_loc)-1 and not shuffle_var.get():
         currenttrack_id = 0
-    else:
+    elif not shuffle_var.get():
         currenttrack_id = currenttrack_id + 1
-    playlist.selection_clear(0, 'end')
-    playlist.selection_set(currenttrack_id)
     player.delete()
     build_queue()
+    playlist.selection_clear(0, 'end')
+    playlist.selection_set(currenttrack_id)
     currenttrack_fullname = playlist.get(currenttrack_id)
     standard_play()
 
@@ -436,6 +442,7 @@ def switchTosearchlist():               #Zu Searchlist
         USBbutton.grid(column=1, row=1, sticky=(N, E))
     searchlist.grid(column=1, row=1, columnspan=1, sticky=(N, W, E, S))
     searchcanvas.grid(column=1, row=3, columnspan=3, sticky=(N, W, E, S))
+    searchcanvas.grid_propagate(False)
     searchlistscroll.grid(column=1, row=1, sticky=(N, E, S))
     searchbox.grid(column=1, row=2,columnspan=2, sticky=(N, W))
     searchbutton.grid(column=3, row=2, sticky=(N, E))
@@ -484,7 +491,7 @@ def switchToDatMan():                   #Von zu Dateimanager 0
     searchbutton.grid_forget()
     searchlistbutton.grid_forget()
     hide_confirm()
-    delete_list_button.state(['disabled'])
+    delete_list_button.state(['!disabled'])
     create_folder_button.state(['disabled'])
     create_pllst_button.state(['disabled'])
     create_entry.state(['disabled'])
@@ -695,7 +702,7 @@ def ins_spc():
 #############################################################################
 #{C08} Updatefunktion
 #############################################################################
-def update_clock():                                     #Funktion fuer regelmaessige Updates 
+def update_clock():
     global overlength
     global left_right
     global update_runs
@@ -727,16 +734,26 @@ def update_clock():                                     #Funktion fuer regelmaes
             playmin = (playlength-playsec)/60
             currenttrack_length.set('%i:%.2i/%i:%.2i' %(playmin, playsec, trackmin, tracksec))
             probar["value"] = player.time                      #Der Fortschritt der Progressbar wird gesetzt
-            if len(currenttrack_fullname) > 36:
+            if len(currenttrack_fullname) > 29:
                 if not left_right.get():
-                    currenttrack_name.set(currenttrack_fullname[overlength:(36+overlength)])
+                    if overlength < 0:
+                        currenttrack_name.set(currenttrack_fullname[0:28])
+                    elif overlength > (len(currenttrack_fullname)-28):
+                        currenttrack_name.set(currenttrack_fullname[(len(currenttrack_fullname)-28):len(currenttrack_fullname)])
+                    else:
+                        currenttrack_name.set(currenttrack_fullname[overlength:(28+overlength)])
                     overlength += 1
                 else:
-                    currenttrack_name.set(currenttrack_fullname[overlength:(36+overlength)])
+                    if overlength < 0:
+                        currenttrack_name.set(currenttrack_fullname[0:28])
+                    elif overlength > (len(currenttrack_fullname)-28):
+                        currenttrack_name.set(currenttrack_fullname[(len(currenttrack_fullname)-28):len(currenttrack_fullname)])
+                    else:
+                        currenttrack_name.set(currenttrack_fullname[overlength:(28+overlength)])
                     overlength -= 1
-                if overlength == 0:
+                if overlength == -3:
                     left_right.set(False)
-                elif overlength == len(playlist.get(currenttrack_id))-36:
+                elif overlength == len(currenttrack_fullname)-25:
                     left_right.set(True)
             else:
                 currenttrack_name.set(currenttrack_fullname)
@@ -751,6 +768,11 @@ def refreshUSB():
     for i in USBlist.get_children():
         USBlist.delete(i)
     scanPath(path_usb, USBlist)         #USBliste wird erstellt
+    
+def refreshMan():
+    for i in manlist.get_children():
+        manlist.delete(i)
+    scanPath(path_main, manlist)         #USBliste wird erstellt
     
 #Exit Funktion
 def exit_player():
@@ -797,14 +819,20 @@ def hide_confirm():
     decline_txt.grid_forget()
     decline_button.grid_forget()
     
-def delPlaylist():
-    if os.path.isfile(pl_ls_list.focus()):
-        os.remove(pl_ls_list.focus())
-    elif os.path.isdir(pl_ls_list.focus()):
-        os.rmdir(pl_ls_list.focus())
-    for i in pl_ls_list.get_children():         #Playlist Liste wird erstellt
-        pl_ls_list.delete(i)
-    scanPath(path_pl, pl_ls_list)
+def del_option():
+    if manager_mode == 2:
+        if os.path.isfile(pl_ls_list.focus()):
+            os.remove(pl_ls_list.focus())
+            pl_ls_list.delete(pl_ls_list.focus())
+        elif os.path.isdir(pl_ls_list.focus()):
+            os.rmdir(pl_ls_list.focus())
+            for i in pl_ls_list.get_children():         #Playlist Liste wird erstellt
+                pl_ls_list.delete(i)
+            scanPath(path_pl, pl_ls_list)
+    if manager_mode == 0:
+        if os.path.isfile(manlist.focus()):
+            os.remove(manlist.focus())
+            manlist.delete(manlist.focus())
     hide_confirm()
 
 def mastervol_down():
@@ -826,6 +854,12 @@ def mastervol_up():
 #############################################################################
 #{C10} Play Funktionen
 #############################################################################
+
+def switch_shuffle():
+    if shuffle_var.get():
+        shuffle_var.set(False)
+    else:
+        shuffle_var.set(True)
 
 def standard_play():
     global update_runs
@@ -893,6 +927,9 @@ def direkt_play(event):
 def playlist_play(event):
     global currenttrack_fullname
     global currenttrack_id
+    if shuffle_var.get():
+        shuffle_var.set(False)
+        threading.Timer(0.5, switch_shuffle).start()
     idxs = playlist.curselection()
     idx = int(idxs[0])
     currenttrack_id = idx
@@ -933,16 +970,19 @@ def shiftSelection(event):
 #{C12} Layout Elemente
 #############################################################################
 #Frames
-mainframe = ttk.Frame(root, padding="3 3 3 3")
+if sys.platform == "linux":
+    mainframe = ttk.Frame(root)
+else:
+    mainframe = ttk.Frame(root, padding="3 3 3 3")
 mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
 mainframe.columnconfigure(0, weight=1)
 mainframe.rowconfigure(0, weight=1)
 
-manager = ttk.Frame(mainframe, padding="3 3 3 3", width =210)
+manager = ttk.Frame(mainframe, padding="3 3 3 3", width =210, height=320)
 manager.grid_propagate(False)
 manager.grid(column=1, row=1, sticky=(N, W, S))
 
-playframe = ttk.Frame(mainframe, padding="3 3 3 3")
+playframe = ttk.Frame(mainframe, padding="0 3 3 3", width =210, height=320)
 playframe.grid(column=2, row=1, sticky=(N, E, S))
 
 #Warning Window
@@ -955,114 +995,24 @@ warning_txt.grid(column=1, row=1, sticky=(N), padx=10, pady = 10)
 searchlistbutton = ttk.Button(manager, width=2, image=searchimg, command=switchTosearchlist)
 searchlistbutton.grid(column=1, row=1, sticky=(N, E))
 
-searchcanvas = Canvas(manager, height = 350, width = 200)
+searchcanvas = Canvas(manager, height = 320, width = 200)
 searchcanvas.grid_propagate(False)
 
-searchlist = Listbox(searchcanvas, width = 34, height =15)
+if sys.platform == "linux":
+    searchlist = Listbox(searchcanvas, width = 25, height =17)
+else:
+    searchlist = Listbox(searchcanvas, width = 25, height =15)
 searchlist.bind('<Double-Button-1>', searchlist_play)
 
 searchlistscroll = ttk.Scrollbar(searchcanvas, orient=VERTICAL, command=searchlist.yview)
 searchlist.configure(yscrollcommand=searchlistscroll.set)
 
-searchbox = ttk.Entry(manager, width=27, textvariable=search_string)
+searchbox = ttk.Entry(manager, width=20, textvariable=search_string)
 searchbox.bind('<Return>', start_search('<Return>'))
 searchbox.bind('<FocusIn>', show_keyboard)
 searchbox.bind('<FocusOut>', hide_keyboard)
 
 searchbutton = ttk.Button(manager, width=2, image=searchimg, command=lambda: start_search('<Return>'))
-
-#Option Window
-optioncanvas = Canvas(mainframe, height = 170, width = 375, bd=5, relief = RAISED, highlightthickness=0)
-optioncanvas.grid_propagate(False)
-optioncanvas.create_line((75, 0, 75, 160))
-optioncanvas.create_line((158, 0, 158, 160))
-optioncanvas.create_line((200, 0, 200, 160))
-
-refreshUSB_txt = ttk.Label(optioncanvas, text=("Refresh USB"))
-refreshUSB_txt.grid(column=1, row=1, sticky=(N), padx = 5, pady = 5)
-
-refreshUSBbutton = ttk.Button(optioncanvas, width=2, image=refreshimg, command=refreshUSB)
-refreshUSBbutton.grid(column=1, row=2, sticky=(N))
-
-shuffle_txt = ttk.Label(optioncanvas, text=("Shuffle"))
-shuffle_txt.grid(column=1, row=3, sticky=(N))
-
-shuffle_box = ttk.Checkbutton(optioncanvas, variable=shuffle_var, onvalue=True, offvalue=False)
-shuffle_box.grid(column=1, row=4, sticky=(N))
-
-copy_txt = ttk.Label(optioncanvas, text=("USB Copy"))
-copy_txt.grid(column=1, row=5, sticky=(N))
-
-copy_box = ttk.Checkbutton(optioncanvas, variable=copy_var, onvalue=True, offvalue=False)
-copy_box.grid(column=1, row=6, sticky=(N), pady=3)
-
-create_folder_txt = ttk.Label(optioncanvas, text=("Create Folder"))
-create_folder_txt.grid(column=2, row=1, sticky=(N), padx = 3, pady = 5)
-
-create_folder_button = ttk.Button(optioncanvas, width=2, image=folderimg, command=create_Folder)
-create_folder_button.grid(column=2, row=2, sticky=(N))
-create_folder_button.state(['disabled'])
-
-create_pllst_txt = ttk.Label(optioncanvas, text=("Create Playlist"))
-create_pllst_txt.grid(column=2, row=3, sticky=(N))
-
-create_pllst_button = ttk.Button(optioncanvas, width=2, image=clistimg, command=create_List)
-create_pllst_button.grid(column=2, row=4, sticky=(N))
-create_pllst_button.state(['disabled'])
-
-filename_txt = ttk.Label(optioncanvas, text=("Name:"))
-filename_txt.grid(column=2, row=5, sticky=(N))
-
-create_entry = ttk.Entry(optioncanvas, width=12, textvariable=create_string)
-create_entry.grid(column=2, row=6, sticky=(N))
-create_entry.state(['disabled'])
-create_entry.bind('<Return>', start_search('<Return>'))
-create_entry.bind('<FocusIn>', show_keyboard)
-create_entry.bind('<FocusOut>', hide_keyboard)
-
-exit_txt = ttk.Label(optioncanvas, text=("Exit"))
-exit_txt.grid(column=7, row=1, sticky=(N), padx = 3, pady = 5)
-
-exitbutton = ttk.Button(optioncanvas, width=2, image=exitimg, command=exit_player)
-exitbutton.grid(column=7, row=2, sticky=(N))
-
-delete_list_txt = ttk.Label(optioncanvas, text=("Delete"))
-delete_list_txt.grid(column=3, row=1, sticky=(N), padx = 5, pady = 5)
-
-delete_list_button = ttk.Button(optioncanvas, width=2, image=entimg, command=show_confirm)
-delete_list_button.state(['disabled'])
-delete_list_button.grid(column=3, row=2, sticky=(N))
-
-confirm_txt = ttk.Label(optioncanvas, text=("Ja"))
-
-confirm_button = ttk.Button(optioncanvas, width=2, image=confirmimg, command=delPlaylist)
-
-decline_txt = ttk.Label(optioncanvas, text=("Nein"))
-
-decline_button = ttk.Button(optioncanvas, width=2, image=entimg, command=hide_confirm)
-
-mastervol_txt = ttk.Label(optioncanvas, text=("Master Volume"))
-mastervol_txt.grid(column=4, row=1, columnspan=2, sticky=(N), pady = 5)
-
-mastervol_down_button = ttk.Button(optioncanvas, width=2, image=minusimg, command=mastervol_down)
-mastervol_down_button.grid(column=4, row=2, sticky=(N))
-
-mastervol_up_button = ttk.Button(optioncanvas, width=2, image=plusimg, command=mastervol_up)
-mastervol_up_button.grid(column=5, row=2, sticky=(N))
-
-placeholder_txt1 = ttk.Label(optioncanvas, text="")
-placeholder_txt1.grid(column=4, row=3, sticky=(N), padx = 20)
-
-placeholder_txt2 = ttk.Label(optioncanvas, text=" ")
-placeholder_txt2.grid(column=5, row=3, sticky=(N), padx = 20)
-
-placeholder_txt3 = ttk.Label(optioncanvas, text=" ")
-placeholder_txt3.grid(column=6, row=3, sticky=(N), padx = 20)
-
-message_txt = ttk.Entry(optioncanvas, width=50,  textvariable=message_string)
-message_txt.grid(column=1, row=7, columnspan = 7, rowspan=2, sticky=(S, E, W),padx =5, pady=5)
-message_txt.state(['disabled'])
-message_string.set("Dies ist ein Test abcdefghijklmnopqrstuvwxyz1234567890")
 
 #Datei Manager Window
 datmanbutton = ttk.Button(manager, width=2, image=datmanimg, command=switchToDatMan)
@@ -1070,7 +1020,10 @@ datmanbutton = ttk.Button(manager, width=2, image=datmanimg, command=switchToDat
 optionbutton = ttk.Button(manager, width=2, image=optionimg, command=switchOptions)
 optionbutton.grid(column=1, row=1, sticky=(N, W))
 
-manlist = ttk.Treeview(manager, height = 12)
+if sys.platform == "linux":
+    manlist = ttk.Treeview(manager, height = 13)
+else:
+    manlist = ttk.Treeview(manager, height = 12)
 manlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
 manlist.tag_bind('Play', '<Double-Button-1>', direkt_play)
 
@@ -1081,7 +1034,10 @@ manlist.configure(yscrollcommand=manlistscroll.set)
 #USB Window
 USBbutton = ttk.Button(manager, width=2, image=USBimg, command=switchToUSB)
 
-USBlist = ttk.Treeview(manager, height = 12)
+if sys.platform == "linux":
+    USBlist = ttk.Treeview(manager, height = 13)
+else:
+    USBlist = ttk.Treeview(manager, height = 12)
 USBlist.tag_bind('Play', '<Double-Button-1>', direkt_play)
 
 USBlistscroll = ttk.Scrollbar( manager, orient=VERTICAL, command=USBlist.yview)
@@ -1094,7 +1050,11 @@ playlistbutton.grid(column=1, row=1, sticky=(N))
 akt_pl_txt = ttk.Label(manager, textvariable=currentplaylist)
 akt_pl_txt.grid(column=2, row=1, columnspan=2, sticky=(N, W))
 
-pl_ls_list = ttk.Treeview(manager, height = 12)
+if sys.platform == "linux":
+    pl_ls_list = ttk.Treeview(manager, height = 13)
+else:
+    pl_ls_list = ttk.Treeview(manager, height = 12)
+    
 pl_ls_list.tag_bind('Play', '<Double-Button-1>', playlist_load)
 
 pl_ls_listscroll = ttk.Scrollbar( manager, orient=VERTICAL, command=pl_ls_list.yview)
@@ -1137,15 +1097,18 @@ volbar = ttk.Progressbar(playframe, orient=VERTICAL, length=10, mode='determinat
 volbar.grid(column=7, row=2, columnspan=1, sticky=(N, E, S))
 
 #Progressbar
-barcanvas = Canvas(playframe, height = 5, width = 250)
+barcanvas = Canvas(playframe, height = 5, width = 260)
 barcanvas.grid(column=1, row=3, columnspan=7, sticky=(N, W, E, S))
 barcanvas.grid_propagate(False)
 
-probar = ttk.Progressbar(barcanvas, orient=HORIZONTAL, length=250, mode='determinate')
+probar = ttk.Progressbar(barcanvas, orient=HORIZONTAL, length=260, mode='determinate')
 probar.grid(column=1, row=1, columnspan=1, sticky=(N, W, E, S))
 
 #Playlist
-playlist = Listbox(playframe, height = 15)
+if sys.platform == "linux":
+    playlist = Listbox(playframe, height = 17)
+else:
+    playlist = Listbox(playframe, height = 15)
 playlist.grid(column=1, row=4, columnspan=7, sticky=(N, W, E, S))
 playlist.bind('<Double-Button-1>', playlist_play)
 playlist.bind('<Button-1>', setCurrent)
@@ -1154,6 +1117,96 @@ playlist.bind('<B1-Motion>', shiftSelection)
 playlistscroll = ttk.Scrollbar( playframe, orient=VERTICAL, command=playlist.yview)
 playlistscroll.grid(column=7, row=4, sticky=(N, E, S))
 playlist.configure(yscrollcommand=playlistscroll.set)
+
+#Option Window
+optioncanvas = Canvas(mainframe, height = 160, width = 365, bd=5, relief = RAISED, highlightthickness=0)
+optioncanvas.grid_propagate(False)
+if sys.platform == "linux":
+    optioncanvas.create_line((90, 0, 90, 160))
+    optioncanvas.create_line((194, 0, 194, 160))
+    optioncanvas.create_line((247, 0, 247, 160))
+
+refreshUSB_txt = ttk.Label(optioncanvas, text=("Refresh USB"))
+refreshUSB_txt.grid(column=1, row=1, sticky=(N), padx = 5, pady = 5)
+
+refreshUSBbutton = ttk.Button(optioncanvas, width=2, image=refreshimg, command=refreshUSB)
+refreshUSBbutton.grid(column=1, row=2, sticky=(N))
+
+refreshman_txt = ttk.Label(optioncanvas, text=("Refresh Man."))
+refreshman_txt.grid(column=1, row=3, sticky=(N))
+
+refreshmanbutton = ttk.Button(optioncanvas, width=2, image=refreshimg, command=refreshMan)
+refreshmanbutton.grid(column=1, row=4, sticky=(N))
+
+shuffle_txt = ttk.Label(optioncanvas, text=("Shuffle"))
+shuffle_txt.grid(column=4, row=3, sticky=(N))
+
+shuffle_box = ttk.Checkbutton(optioncanvas, variable=shuffle_var, onvalue=True, offvalue=False)
+shuffle_box.grid(column=4, row=4, sticky=(N), pady = 2)
+
+copy_txt = ttk.Label(optioncanvas, text=("USB Copy"))
+copy_txt.grid(column=5, row=3, sticky=(N))
+
+copy_box = ttk.Checkbutton(optioncanvas, variable=copy_var, onvalue=True, offvalue=False)
+copy_box.grid(column=5, row=4, sticky=(N), pady=2)
+
+create_folder_txt = ttk.Label(optioncanvas, text=("Create Folder"))
+create_folder_txt.grid(column=2, row=1, sticky=(N), padx = 3, pady = 5)
+
+create_folder_button = ttk.Button(optioncanvas, width=2, image=folderimg, command=create_Folder)
+create_folder_button.grid(column=2, row=2, sticky=(N))
+create_folder_button.state(['disabled'])
+
+create_pllst_txt = ttk.Label(optioncanvas, text=("Create Playlist"))
+create_pllst_txt.grid(column=2, row=3, sticky=(N))
+
+create_pllst_button = ttk.Button(optioncanvas, width=2, image=clistimg, command=create_List)
+create_pllst_button.grid(column=2, row=4, sticky=(N))
+create_pllst_button.state(['disabled'])
+
+filename_txt = ttk.Label(optioncanvas, text=("Name:"))
+filename_txt.grid(column=2, row=5, sticky=(N))
+
+create_entry = ttk.Entry(optioncanvas, width=12, textvariable=create_string)
+create_entry.grid(column=2, row=6, sticky=(N))
+create_entry.state(['disabled'])
+create_entry.bind('<Return>', start_search('<Return>'))
+create_entry.bind('<FocusIn>', show_keyboard)
+create_entry.bind('<FocusOut>', hide_keyboard)
+
+delete_list_txt = ttk.Label(optioncanvas, text=("Delete"))
+delete_list_txt.grid(column=3, row=1, sticky=(N), padx = 5, pady = 5)
+
+delete_list_button = ttk.Button(optioncanvas, width=2, image=entimg, command=show_confirm)
+delete_list_button.state(['!disabled'])
+delete_list_button.grid(column=3, row=2, sticky=(N))
+
+confirm_txt = ttk.Label(optioncanvas, text=("Ja"))
+
+confirm_button = ttk.Button(optioncanvas, width=2, image=confirmimg, command=del_option)
+
+decline_txt = ttk.Label(optioncanvas, text=("Nein"))
+
+decline_button = ttk.Button(optioncanvas, width=2, image=entimg, command=hide_confirm)
+
+mastervol_txt = ttk.Label(optioncanvas, text=("Master Volume"))
+mastervol_txt.grid(column=4, row=1, columnspan=2, sticky=(N), pady = 5)
+
+mastervol_down_button = ttk.Button(optioncanvas, width=2, image=minusimg, command=mastervol_down)
+mastervol_down_button.grid(column=4, row=2, sticky=(N))
+
+mastervol_up_button = ttk.Button(optioncanvas, width=2, image=plusimg, command=mastervol_up)
+mastervol_up_button.grid(column=5, row=2, sticky=(N))
+
+message_txt = ttk.Entry(optioncanvas, width=45,  textvariable=message_string)
+message_txt.grid(column=1, row=7, columnspan = 6, rowspan=2, sticky=(S, E, W),padx =5, pady=5)
+message_txt.state(['disabled'])
+
+exit_txt = ttk.Label(optioncanvas, text=("Exit"))
+exit_txt.grid(column=6, row=1, sticky=(N), padx = 3, pady = 5)
+
+exitbutton = ttk.Button(optioncanvas, width=2, image=exitimg, command=exit_player)
+exitbutton.grid(column=6, row=2, sticky=(N))
 
 #############################################################################
 #{C13} Display Keyboard
@@ -1297,8 +1350,14 @@ scanPath(path_main, manlist)    #mp3liste wird erstellt
 scanPath(path_pl, pl_ls_list)   #Playlist Liste wird erstellt
 scanPath(path_usb, USBlist)     #USBliste wird erstellt
 
-#for child in mainframe.winfo_children(): child.grid_configure(padx=2, pady=2)
 optioncanvas.grid_forget()
 keyboardcanvas.grid_forget()
+currenttrack_length.set("0:00/0:00")
+
+#Volume set
+if sys.platform == "linux":
+    set_vol = "amixer -q sset 'Master' " + str(master_volume) + "%"
+    os.system(set_vol)
+volbar["value"] = player.volume
 
 root.mainloop()
