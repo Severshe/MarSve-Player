@@ -47,8 +47,8 @@ import threading
 #############################################################################
 
 #path Pi:
-# path_main = "/home/pi/Documents/MarSve-Player"
-# path_usb = "/media/pi/USBSTICK/MP3-Player"
+# path_main = "/home/pi/Music"
+# path_usb = "/media/pi/"
 # akt_pl = "standard_playlist.lst"
 # path_pl = "/home/pi/Documents/MarSve-Player/playlists"
 
@@ -82,8 +82,9 @@ player = pyglet.media.Player()
 list_loc =[]                        #Liste fuer die Eigentlichen Item Daten der Playlist
 currenttrack_id = 0                 #Welche Track in list_loc spielt gerade
 currenttrack_length = StringVar()   #Wie lang ist diese Track
-currenttrack_name = StringVar()     #Wie ist der Name des Tracks
-currenttrack_fullname = None
+currenttrack_name = StringVar()     #Wie ist der Name des Tracks, der angezeigt wird
+currenttrack_fullname = None        #Voller Name des Tracks ohne Kuerzung bei Ueberlaenge
+current_direct_play_track = None    #Welches Item wird beim direct_play gespielt?
 currentplaylist = StringVar()       #Wie ist der Name der aktuellen Playlist
 currentplaylist.set(os.path.basename(akt_pl)[:-4])  #Setzt die Playlist auf den Standard
 search_string = StringVar()
@@ -108,6 +109,7 @@ warning_string = StringVar()        #String der Warnung
 
 curIndex = 0                        #Globalvar fuer die Verschiebeoption
 manager_mode = 0                    #Globalvar in welchem Mode das linke Fenster ist (DatMan = 0, USB = 1, Playlst = 2)
+play_mode = 2                       #Globalvar in welchem Mode gerade gespielt wird (DatMan = 0, USB = 1, Playlst = 2)
 overlength = 0                      #Globalvar ob und wieviel currenttrack_name zu lang fuer die Anzeige ist
 
 master_volume = 20
@@ -161,26 +163,59 @@ def getFreeSpace( Laufwerk ):
     return txt
     
 
-#Funktion zum aufbauen der queue aus list_loc
+#Funktion zum Aufbauen der Queue aus list_loc bzw. dem Dateisystem (Immer nur 2 Tracks, da es sonst zum stottern kommt)
 def build_queue():
     global currenttrack_id
     global shuffle_var
-    if shuffle_var.get() == True:
-        shuffle_id = currenttrack_id
-        while shuffle_id == currenttrack_id:
-            currenttrack_id = random.randrange(0, len(list_loc), 1)
-        playlist.selection_clear(0, 'end')
-        playlist.selection_set(currenttrack_id)
-    if currenttrack_id == len(list_loc)-1:
-        music = pyglet.media.load(list_loc[currenttrack_id])
+    global play_mode
+    global current_direct_play_track
+    if play_mode == 2:
+        if shuffle_var.get() == True:
+            shuffle_id = currenttrack_id
+            while shuffle_id == currenttrack_id:
+                currenttrack_id = random.randrange(0, len(list_loc), 1)
+            playlist.selection_clear(0, 'end')
+            playlist.selection_set(currenttrack_id)
+        if currenttrack_id == len(list_loc)-1:
+            music = pyglet.media.load(list_loc[currenttrack_id])
+            player.queue(music)
+            music = pyglet.media.load(list_loc[0])
+            player.queue(music)
+        else:
+            music = pyglet.media.load(list_loc[currenttrack_id])
+            player.queue(music)
+            music = pyglet.media.load(list_loc[currenttrack_id+1])
+            player.queue(music)
+    elif play_mode == 0:
+        music = pyglet.media.load(current_direct_play_track)
         player.queue(music)
-        music = pyglet.media.load(list_loc[0])
+        if manlist.next(current_direct_play_track) != "":
+            track = manlist.next(current_direct_play_track)
+            while os.path.basename(track)[-3:] != "mp3":
+                track = manlist.next(track)
+            music = pyglet.media.load(track)
+            player.queue(music)
+        elif manlist.prev(current_direct_play_track) != "":
+            track = manlist.prev(current_direct_play_track)
+            while manlist.prev(track) != "":
+                track = manlist.prev(track)
+            music = pyglet.media.load(track)
+            player.queue(music)
+    elif play_mode == 1:
+        music = pyglet.media.load(current_direct_play_track)
         player.queue(music)
-    else:
-        music = pyglet.media.load(list_loc[currenttrack_id])
-        player.queue(music)
-        music = pyglet.media.load(list_loc[currenttrack_id+1])
-        player.queue(music)
+        if USBlist.next(current_direct_play_track) != "":
+            track = USBlist.next(current_direct_play_track)
+            while os.path.basename(track)[-3:] != "mp3":
+                track = USBlist.next(track)
+            music = pyglet.media.load(track)
+            player.queue(music)
+        elif USBlist.prev(current_direct_play_track) != "":
+            track = USBlist.prev(current_direct_play_track)
+            while USBlist.prev(track) != "":
+                track = USBlist.prev(track)
+            music = pyglet.media.load(track)
+            player.queue(music)
         
 
 
@@ -195,7 +230,7 @@ def write_akt_pl():
                 plfile.write(list_loc[i])
     plfile.close()
 
-#Funktion zum laden von Playlists
+#Funktion zum Laden von Playlists
 def playlist_load(event):
     global akt_pl
     if os.path.isfile(pl_ls_list.focus()):
@@ -323,31 +358,93 @@ def delFromList():
 def nexttrack():
     global currenttrack_id
     global currenttrack_fullname
-    if currenttrack_id == len(list_loc)-1 and not shuffle_var.get():
-        currenttrack_id = 0
-    elif not shuffle_var.get():
-        currenttrack_id = currenttrack_id + 1
-    player.delete()
-    build_queue()
-    playlist.selection_clear(0, 'end')
-    playlist.selection_set(currenttrack_id)
-    currenttrack_fullname = playlist.get(currenttrack_id)
-    standard_play()
+    global play_mode
+    global current_direct_play_track
+    if play_mode == 2:
+        if currenttrack_id == len(list_loc)-1 and not shuffle_var.get():
+            currenttrack_id = 0
+        elif not shuffle_var.get():
+            currenttrack_id = currenttrack_id + 1
+        player.delete()
+        build_queue()
+        playlist.selection_clear(0, 'end')
+        playlist.selection_set(currenttrack_id)
+        currenttrack_fullname = playlist.get(currenttrack_id)
+        standard_play()
+    elif play_mode == 0:
+        player.delete()
+        if manlist.next(current_direct_play_track) != "":
+            current_direct_play_track = manlist.next(current_direct_play_track)
+            while os.path.basename(current_direct_play_track)[-3:] != "mp3" and manlist.next(current_direct_play_track) != "":
+                current_direct_play_track = manlist.next(current_direct_play_track)
+        elif manlist.prev(current_direct_play_track) != "":
+            current_direct_play_track = manlist.prev(current_direct_play_track)
+            while manlist.prev(current_direct_play_track) != "":
+                current_direct_play_track = manlist.prev(current_direct_play_track)
+        manlist.see(current_direct_play_track)
+        build_queue()
+        currenttrack_fullname = os.path.basename(current_direct_play_track)[:-4]
+        standard_play()
+    elif play_mode == 1:
+        player.delete()
+        if USBlist.next(current_direct_play_track) != "":
+            current_direct_play_track = USBlist.next(current_direct_play_track)
+            while os.path.basename(current_direct_play_track)[-3:] != "mp3" and USBlist.next(current_direct_play_track) != "":
+                current_direct_play_track = USBlist.next(current_direct_play_track)
+        elif USBlist.prev(current_direct_play_track) != "":
+            current_direct_play_track = USBlist.prev(current_direct_play_track)
+            while USBlist.prev(current_direct_play_track) != "":
+                current_direct_play_track = USBlist.prev(current_direct_play_track)
+        USBlist.see(current_direct_play_track)
+        build_queue()
+        currenttrack_fullname = os.path.basename(current_direct_play_track)[:-4]
+        standard_play()
 
 #Funktion fuer den vorherigen Track
 def prevtrack():
     global currenttrack_id
     global currenttrack_fullname
-    if currenttrack_id == 0:
-        currenttrack_id = len(list_loc)-1
-    else:
-        currenttrack_id = currenttrack_id - 1
-    playlist.selection_clear(0, 'end')
-    playlist.selection_set(currenttrack_id)
-    player.delete()
-    build_queue()
-    currenttrack_fullname = playlist.get(currenttrack_id)
-    standard_play()
+    global play_mode
+    global current_direct_play_track
+    if play_mode == 2:
+        if currenttrack_id == 0:
+            currenttrack_id = len(list_loc)-1
+        else:
+            currenttrack_id = currenttrack_id - 1
+        playlist.selection_clear(0, 'end')
+        playlist.selection_set(currenttrack_id)
+        player.delete()
+        build_queue()
+        currenttrack_fullname = playlist.get(currenttrack_id)
+        standard_play()
+    elif play_mode == 0:
+        player.delete()
+        if manlist.prev(current_direct_play_track) != "":
+            current_direct_play_track = manlist.prev(current_direct_play_track)
+            while os.path.basename(current_direct_play_track)[-3:] != "mp3" and manlist.prev(current_direct_play_track) != "":
+                current_direct_play_track = manlist.prev(current_direct_play_track)
+        elif manlist.next(current_direct_play_track) != "":
+            current_direct_play_track = manlist.next(current_direct_play_track)
+            while manlist.next(current_direct_play_track) != "":
+                current_direct_play_track = manlist.next(current_direct_play_track)
+        manlist.see(current_direct_play_track)
+        build_queue()
+        currenttrack_fullname = os.path.basename(current_direct_play_track)[:-4]
+        standard_play()
+    elif play_mode == 1:
+        player.delete()
+        if USBlist.prev(current_direct_play_track) != "":
+            current_direct_play_track = USBlist.prev(current_direct_play_track)
+            while os.path.basename(current_direct_play_track)[-3:] != "mp3" and USBlist.prev(current_direct_play_track) != "":
+                current_direct_play_track = USBlist.prev(current_direct_play_track)
+        elif USBlist.next(current_direct_play_track) != "":
+            current_direct_play_track = USBlist.next(current_direct_play_track)
+            while USBlist.next(current_direct_play_track) != "":
+                current_direct_play_track = USBlist.next(current_direct_play_track)
+        USBlist.see(current_direct_play_track)
+        build_queue()
+        currenttrack_fullname = os.path.basename(current_direct_play_track)[:-4]
+        standard_play()
 
 #Funktion zur Lautstaerkeerhoehung
 def volup():
@@ -708,18 +805,33 @@ def update_clock():
     global update_runs
     global currenttrack_fullname
     global currenttrack_id
+    global play_mode
     if player.source is not None:
-        if probar["maximum"] != player.source.duration:        #If Routine, falls der Track sich geaendert hat
-            if currenttrack_id == len(list_loc)-1:
-                currenttrack_id = 0                            #ohne Eingreifen (automatischer next Track)
-            else:
-                currenttrack_id = currenttrack_id + 1
-            player.delete()
-            build_queue()
-            player.play()
-            currenttrack_fullname = currenttrack_fullname = playlist.get(currenttrack_id)
-            probar["maximum"] = player.source.duration         #Das Maximum der Progressbar wird gesetzt
-            overlength=0
+        if play_mode == 2:
+            if probar["maximum"] != player.source.duration:        #If Routine, falls der Track sich geaendert hat
+                if currenttrack_id == len(list_loc)-1:
+                    currenttrack_id = 0                            #ohne Eingreifen (automatischer next Track)
+                else:
+                    currenttrack_id = currenttrack_id + 1
+                player.delete()
+                build_queue()
+                player.play()
+                currenttrack_fullname = playlist.get(currenttrack_id)
+                probar["maximum"] = player.source.duration         #Das Maximum der Progressbar wird gesetzt
+                overlength=0
+        elif play_mode == 0:
+            if probar["maximum"] != player.source.duration:        #If Routine, falls der Track sich geaendert hat
+                # if currenttrack_id == len(list_loc)-1:
+                    # currenttrack_id = 0                            #ohne Eingreifen (automatischer next Track)
+                # else:
+                    # currenttrack_id = currenttrack_id + 1
+                current_direct_play_track = manlist.next(current_direct_play_track)
+                player.delete()
+                build_queue()
+                player.play()
+                currenttrack_fullname = os.path.basename(current_direct_play_track)[:-4]
+                probar["maximum"] = player.source.duration         #Das Maximum der Progressbar wird gesetzt
+                overlength=0
                 
         if player.playing:
             update_runs.set(True)
@@ -905,20 +1017,24 @@ def searchlist_play(event):
     standard_play()
 
 #Direct Play des Dateitrees
-def direkt_play(event):
+def direct_play(event):
     global currenttrack_fullname
     global manager_mode
+    global play_mode
+    global current_direct_play_track
     if os.path.isfile(manlist.focus()) and manlist.focus()[-4:] == ".mp3" and manager_mode == 0:
+        play_mode = 0
+        current_direct_play_track = manlist.focus()
         player.delete()
-        music = pyglet.media.load(manlist.focus())
-        player.queue(music)
+        build_queue()
         source = player.source
         currenttrack_fullname = os.path.basename(manlist.focus())[:-4]
         standard_play()
     elif os.path.isfile(USBlist.focus()) and USBlist.focus()[-4:] == ".mp3" and manager_mode == 1:
+        play_mode = 1
+        current_direct_play_track = USBlist.focus()
         player.delete()
-        music = pyglet.media.load(USBlist.focus())
-        player.queue(music)
+        build_queue()
         source = player.source
         currenttrack_fullname = os.path.basename(USBlist.focus())[:-4]
         standard_play()
@@ -927,6 +1043,8 @@ def direkt_play(event):
 def playlist_play(event):
     global currenttrack_fullname
     global currenttrack_id
+    global play_mode
+    play_mode = 2
     if shuffle_var.get():
         shuffle_var.set(False)
         threading.Timer(0.5, switch_shuffle).start()
@@ -1025,7 +1143,7 @@ if sys.platform == "linux":
 else:
     manlist = ttk.Treeview(manager, height = 12)
 manlist.grid(column=1, row=2, columnspan=3, sticky=(N, W, E, S))
-manlist.tag_bind('Play', '<Double-Button-1>', direkt_play)
+manlist.tag_bind('Play', '<Double-Button-1>', direct_play)
 
 manlistscroll = ttk.Scrollbar( manager, orient=VERTICAL, command=manlist.yview)
 manlistscroll.grid(column=3, row=2, sticky=(N, E, S))
@@ -1038,7 +1156,7 @@ if sys.platform == "linux":
     USBlist = ttk.Treeview(manager, height = 13)
 else:
     USBlist = ttk.Treeview(manager, height = 12)
-USBlist.tag_bind('Play', '<Double-Button-1>', direkt_play)
+USBlist.tag_bind('Play', '<Double-Button-1>', direct_play)
 
 USBlistscroll = ttk.Scrollbar( manager, orient=VERTICAL, command=USBlist.yview)
 USBlist.configure(yscrollcommand=USBlistscroll.set)
